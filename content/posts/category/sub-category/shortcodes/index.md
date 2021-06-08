@@ -6,6 +6,7 @@ menu:
   sidebar:
     name: Shortcodes Sample
     identifier: shortcodes
+    parent: sub-category
     weight: 40
 hero: boat.jpg
 ---
