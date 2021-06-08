@@ -1,0 +1,98 @@
+<!doctype html><html><head><title>Cli Notes</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta http-equiv=x-ua-compatible content="ie=edge"><link rel=stylesheet href=/css/bootstrap.min.css><link rel=stylesheet href=/css/layouts/main.css><link rel=stylesheet href=/css/navigators/navbar.css><link rel=stylesheet href=/css/plyr.css><link rel=stylesheet href=/css/flag-icon.min.css><link href="https://fonts.googleapis.com/css2?family=Muli:wght@300;400;500;600" rel=stylesheet><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.min.css><link rel=icon type=image/png href=/images/site/favicon_hub02d7508a1c89b2b7812eab204efeb9a_4223_42x0_resize_box_2.png><meta property="og:title" content="Cli Notes"><meta property="og:description" content><meta property="og:type" content="website"><meta property="og:url" content="https://oct28-yjkim.github.io/notes/cli/"><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/styles/atom-one-dark.min.css><link rel=stylesheet href=/css/layouts/notes.css><link rel=stylesheet href=/css/navigators/sidebar.css></head><body data-spy=scroll data-target=#TableOfContents data-offset=80><div class="container-fluid bg-dimmed wrapper"><nav class="navbar navbar-expand-xl top-navbar final-navbar shadow"><div class=container><button class="navbar-toggler navbar-light" id=sidebar-toggler type=button onclick=toggleSidebar()>
+<span class=navbar-toggler-icon></span></button>
+<a class=navbar-brand href=/><img src=/images/site/main-logo_hu9ad2f25a877e6fef77c7a3dbef5094ad_6881_42x0_resize_box_2.png alt=Logo>
+yjkim's Blog</a>
+<button class="navbar-toggler navbar-light" id=toc-toggler type=button onclick=toggleTOC()>
+<span class=navbar-toggler-icon></span></button><div class="collapse navbar-collapse lang-selector" id=top-nav-items><ul class="navbar-nav ml-auto"></ul></div></div><img src=/images/site/main-logo_hu9ad2f25a877e6fef77c7a3dbef5094ad_6881_42x0_resize_box_2.png class=d-none id=main-logo alt=Logo>
+<img src=/images/site/inverted-logo_hub02d7508a1c89b2b7812eab204efeb9a_4223_42x0_resize_box_2.png class=d-none id=inverted-logo alt="Inverted Logo"></nav><section class=sidebar-section id=sidebar-section><div class=sidebar-holder><div class=sidebar id=sidebar><form class=mx-auto method=get action=/search><input type=text name=keyword placeholder=Search data-search id=search-box></form><div class=sidebar-tree><ul class=tree id=tree><li id=list-heading><a href=/notes data-filter=all>Notes</a></li><div class=subtree><li><i class="fas fa-plus-circle"></i><a href=/notes/go/>Go</a><ul><li><i class="fas fa-plus-circle"></i><a href=/notes/go/basic/>Basics</a><ul><li><a href=/notes/go/basic/introduction/ title=Introduction>Introduction</a></li><li><a href=/notes/go/basic/types/ title="Basic Types">Basic Types</a></li><li><a href=/notes/go/basic/flow-control/ title="Flow Control">Flow Control</a></li></ul></li><li><i class="fas fa-plus-circle"></i><a href=/notes/go/advanced/>Advanced</a><ul><li><a href=/notes/go/advanced/files/ title="File Manipulation">File Manipulation</a></li></ul></li></ul></li><li><i class="fas fa-plus-circle"></i><a href=/notes/bash/>Bash</a><ul><li><a href=/notes/bash/basic/ title=Variables>Variables</a></li></ul></li><li><i class="fas fa-minus-circle"></i><a class=active href=/notes/cli/>Cli</a><ul class=active><li><a href=/notes/cli/firewalld/ title=firewalld-commands>firewalld-commands</a></li><li><a href=/notes/cli/git/ title=git-commands>git-commands</a></li></ul></li></div></ul></div></div></div></section><section class=content-section id=content-section><div class="content container-fluid" id=content><div class="container-fluid note-card-holder" id=note-card-holder><div class=note-card><div class=item><h5 class=note-title><span>Install</span></h5><div class=card><div class=card-body><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>$ sudo yum install -y firewalld 
+$ sudo systemctl status firewalld 
+$ sudo systemctl start firewalld 
+$ sudo firewall-cmd --state
+</code></pre></div></div></div></div></div><div class=note-card><div class=item><h5 class=note-title><span>Select Zone</span></h5><div class=card><div class=card-body><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=color:#75715e># Default 조회 </span>
+$ sudo firewall-cmd --get-default-zone
+
+<span style=color:#75715e># Active Zone list 조회 </span>
+$ firewall-cmd --get-active-zones
+
+<span style=color:#75715e># 특정 Zone 의 정보 조회 </span>
+$ sudo firewall-cmd --zone<span style=color:#f92672>=</span>home --list-all
+</code></pre></div></div></div></div></div><div class=note-card><div class=item><h5 class=note-title><span>Change Default Zone</span></h5><div class=card><div class=card-body><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>sudo firewall-cmd --set-default-zone<span style=color:#f92672>=</span>home
+</code></pre></div></div></div></div></div><div class=note-card><div class=item><h5 class=note-title><span>Accept Service to Specfic Zone</span></h5><div class=card><div class=card-body><ul><li>Zone 에 Service 허용<ul><li>영구<code>--permanent</code>와 비영구의 차이는 <code>--reload</code> 시에 비영구 옵션은 사라진다.</li></ul></li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=color:#75715e># Http 서비스 허용 </span>
+$ sudo firewall-cmd --zone<span style=color:#f92672>=</span>public --add-service<span style=color:#f92672>=</span>http
+$ sudo firewall-cmd --zone<span style=color:#f92672>=</span>public --list-services
+output : dhcpv6-client http ssh
+
+<span style=color:#75715e># Http 서비스 영구 허용 </span>
+$ sudo firewall-cmd --zone<span style=color:#f92672>=</span>public --permanent --add-service<span style=color:#f92672>=</span>http
+
+<span style=color:#75715e># Port/protocol 로 허용 </span>
+$ sudo firewall-cmd --zone<span style=color:#f92672>=</span>public --add-port<span style=color:#f92672>=</span>5000/tcp
+$ sudo firewall-cmd --zone<span style=color:#f92672>=</span>public --list-ports
+output : 5000/tcp
+
+<span style=color:#75715e># Port/protocol 로 영구 허용 </span>
+$ sudo firewall-cmd --zone<span style=color:#f92672>=</span>public --add-port<span style=color:#f92672>=</span>5000/tcp
+</code></pre></div></div></div></div></div><div class=note-card><div class=item><h5 class=note-title><span>Firewalld Service restart</span></h5><div class=card><div class=card-body><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>sudo firewall-cmd --reload
+</code></pre></div></div></div></div></div><div class=note-card><div class=item><h5 class=note-title><span>Add Port Example</span></h5><div class=card><div class=card-body><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=color:#f92672>{</span>
+firewall-cmd --permanent --add-port<span style=color:#f92672>=</span>10250/tcp
+firewall-cmd --permanent --add-port<span style=color:#f92672>=</span>10255/tcp
+firewall-cmd --permanent --add-port<span style=color:#f92672>=</span>8472/udp
+firewall-cmd --permanent --add-port<span style=color:#f92672>=</span>30000-32767/tcp
+firewall-cmd --add-masquerade --permanent
+
+systemctl restart firewalld
+<span style=color:#f92672>}</span>
+
+<span style=color:#f92672>{</span>
+firewall-cmd --permanent --add-port<span style=color:#f92672>=</span>80/tcp
+firewall-cmd --permanent --add-port<span style=color:#f92672>=</span>443/tcp
+
+systemctl restart firewalld
+<span style=color:#f92672>}</span>
+</code></pre></div></div></div></div></div><div class=note-card><div class=item><h5 class=note-title><span>init</span></h5><div class=card><div class=card-body><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>git init 
+
+git config --global user.name <span style=color:#e6db74>&#34;oct28-yjkim@gmail.com&#34;</span> 
+git config --global user.email <span style=color:#e6db74>&#34;oct28-yjkim@gamil.com&#34;</span>
+
+git add README.md
+git commit -m <span style=color:#e6db74>&#34;first commit&#34;</span>
+git branch -M main
+git remote add origin https://github.com/oct28-yjkim/test.git
+git push -u origin main
+</code></pre></div></div></div></div></div><div class=note-card><div class=item><h5 class=note-title><span>add</span></h5><div class=card><div class=card-body><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>git add . <span style=color:#75715e># current folder </span>
+git add readme.md <span style=color:#75715e># readme.md </span>
+</code></pre></div></div></div></div></div><div class=note-card><div class=item><h5 class=note-title><span>commit</span></h5><div class=card><div class=card-body><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>git commit -m <span style=color:#e6db74>&#34;add pelican source&#34;</span>
+
+git log 
+commit 4fb60f7260f17fee8cc5b6e4eaf779d8997a2a5a <span style=color:#f92672>(</span>HEAD -&gt; gh-pages, origin/gh-pages<span style=color:#f92672>)</span>
+Author: yjkim &lt;seaofnight@hanmail.net&gt;
+Date:   Sat Sep <span style=color:#ae81ff>14</span> 18:58:04 <span style=color:#ae81ff>2019</span> +0900
+
+    add pelican source
+</code></pre></div></div></div></div></div><div class=note-card><div class=item><h5 class=note-title><span>checkout</span></h5><div class=card><div class=card-body><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash>BRANCH_NAME<span style=color:#f92672>=</span>release-2.16
+
+git checkout $BRANCH_NAME
+
+<span style=color:#75715e># clone with specfic branch </span>
+git clone -b $BRANCH_NAME --single-branch  https://github.com/kubernetes-sigs/kubespray.git
+
+</code></pre></div></div></div></div></div><div class=note-card><div class=item><h5 class=note-title><span>push local repo</span></h5><div class=card><div class=card-body><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=color:#75715e># init 로 프로젝트 생성 </span>
+git init 
+
+<span style=color:#75715e># 설정정보 등록 </span>
+git config --global user.name <span style=color:#e6db74>&#34;yjkim&#34;</span>
+git config --global user.email seaofnight@hanmail.net
+
+<span style=color:#75715e># remote 정보 등록, 해당 remote 가 public 사이트이면 프로젝트 생성해야함. e.g github</span>
+git remote add origin https://github.com/seaofnight/vitess-example.git
+
+<span style=color:#75715e># 병합하기 위하여 pull</span>
+git pull origin master
+
+<span style=color:#75715e># 업로드 </span>
+git push origin master
+</code></pre></div></div></div></div></div><div class=note-card><div class=item><h5 class=note-title><span>rebase</span></h5><div class=card><div class=card-body><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-bash data-lang=bash><span style=color:#75715e># previous 5 commit </span>
+git rebase -i head~5
+</code></pre></div></div></div></div></div></div><div class=paginator></div></div></section></div><footer class="container-fluid text-center align-content-center footer pb-2"><div class="container pt-5"><div class="row text-left"><div class="col-md-4 col-sm-12"><h5>Navigation</h5><ul><li class=nav-item><a class=smooth-scroll href=/#about>About</a></li><li class=nav-item><a class=smooth-scroll href=/#skills>Skills</a></li><li class=nav-item><a class=smooth-scroll href=/#experiences>Experiences</a></li><li class=nav-item><a class=smooth-scroll href=/#recent-posts>Recent Posts</a></li></ul></div><div class="col-md-4 col-sm-12"><h5>Contact me:</h5><ul><li><span>Email:</span> <span>oct28-yjkim@google.com</span></li></ul></div></div></div><hr><div class=container><div class="row text-left"><div class=col-md-4><a id=theme href=https://github.com/hossainemruz/toha target=_blank rel=noopener><img src=/images/theme-logo_hu8376fd15465fef26ffe66b6bcf0ca686_13669_32x0_resize_box_2.png alt="Toha Theme Logo">
+Toha</a></div><div class="col-md-4 text-center">© 2020 Copyright.</div><div class="col-md-4 text-right"><a id=hugo href=https://gohugo.io/ target=_blank rel=noopener>Powered by
+<img src=/images/hugo-logo.svg alt="Hugo Logo" height=18></a></div></div></div></footer><script type=text/javascript src=/js/jquery-3.4.1.min.js></script><script type=text/javascript src=/js/popper.min.js></script><script type=text/javascript src=/js/bootstrap.min.js></script><script type=text/javascript src=/js/navbar.js></script><script type=text/javascript src=/js/plyr.js></script><script type=text/javascript src=/js/main.js></script><script src=https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/highlight.min.js></script><script src=/js/imagesloaded.pkgd.min.js></script><script src=/js/note.js></script><script>hljs.initHighlightingOnLoad();</script></body></html>
