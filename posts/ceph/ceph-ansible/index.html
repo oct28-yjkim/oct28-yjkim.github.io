@@ -1,0 +1,193 @@
+<!doctype html><html><head><title>Ceph ansible</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta http-equiv=x-ua-compatible content="ie=edge"><link rel=stylesheet href=/css/bootstrap.min.css><link rel=stylesheet href=/css/layouts/main.css><link rel=stylesheet href=/css/navigators/navbar.css><link rel=stylesheet href=/css/plyr.css><link rel=stylesheet href=/css/flag-icon.min.css><link href="https://fonts.googleapis.com/css2?family=Muli:wght@300;400;500;600" rel=stylesheet><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.min.css><link rel=icon type=image/png href=/images/site/favicon_hub02d7508a1c89b2b7812eab204efeb9a_4223_42x0_resize_box_2.png><meta property="og:title" content="Ceph ansible"><meta property="og:description" content="ceph installation with ansible"><meta property="og:type" content="article"><meta property="og:url" content="https://oct28-yjkim.github.io/posts/ceph/ceph-ansible/"><meta property="article:published_time" content="2021-06-08T08:06:25+06:00"><meta property="article:modified_time" content="2021-06-08T08:06:25+06:00"><meta name=description content="ceph installation with ansible"><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/styles/atom-one-dark.min.css><link rel=stylesheet href=/css/layouts/single.css><link rel=stylesheet href=/css/navigators/sidebar.css><link rel=stylesheet href=/css/style.css></head><body data-spy=scroll data-target=#TableOfContents data-offset=80><div class="container-fluid bg-dimmed wrapper"><nav class="navbar navbar-expand-xl top-navbar final-navbar shadow"><div class=container><button class="navbar-toggler navbar-light" id=sidebar-toggler type=button onclick=toggleSidebar()>
+<span class=navbar-toggler-icon></span></button>
+<a class=navbar-brand href=/><img src=/images/site/main-logo_hu9ad2f25a877e6fef77c7a3dbef5094ad_6881_42x0_resize_box_2.png alt=Logo>
+yjkim's Blog</a>
+<button class="navbar-toggler navbar-light" id=toc-toggler type=button onclick=toggleTOC()>
+<span class=navbar-toggler-icon></span></button><div class="collapse navbar-collapse lang-selector" id=top-nav-items><ul class="navbar-nav ml-auto"></ul></div></div><img src=/images/site/main-logo_hu9ad2f25a877e6fef77c7a3dbef5094ad_6881_42x0_resize_box_2.png class=d-none id=main-logo alt=Logo>
+<img src=/images/site/inverted-logo_hub02d7508a1c89b2b7812eab204efeb9a_4223_42x0_resize_box_2.png class=d-none id=inverted-logo alt="Inverted Logo"></nav><section class=sidebar-section id=sidebar-section><div class=sidebar-holder><div class=sidebar id=sidebar><form class=mx-auto method=get action=/search><input type=text name=keyword placeholder=Search data-search id=search-box></form><div class=sidebar-tree><ul class=tree id=tree><li id=list-heading><a href=/posts data-filter=all>Posts</a></li><div class=subtree><li><a href=/posts/introduction/ title=Introduction>Introduction</a></li><li><i class="fas fa-plus-circle"></i><a href=/posts/category/>Category</a><ul><li><i class="fas fa-plus-circle"></i><a href=/posts/category/sub-category/>Sub-Category</a><ul><li><a href=/posts/category/sub-category/rich-content/ title="Rich Content">Rich Content</a></li><li><a href=/posts/category/sub-category/markdown-sample/ title="Markdown Sample">Markdown Sample</a></li><li><a href=/posts/category/sub-category/shortcodes/ title="Shortcodes Sample">Shortcodes Sample</a></li></ul></li></ul></li><li><i class="fas fa-minus-circle"></i><a class=active href=/posts/ceph/>Ceph</a><ul class=active><li><a class=active href=/posts/ceph/ceph-ansible/ title=ceph-ansible>ceph-ansible</a></li><li><a href=/posts/ceph/ceph-commands/ title=ceph-commands>ceph-commands</a></li><li><a href=/posts/ceph/ceph-connect/ title=ceph-connect>ceph-connect</a></li></ul></li><li><i class="fas fa-plus-circle"></i><a href=/posts/kubernetes/>Kubernetes</a><ul><li><a href=/posts/kubernetes/kubebuilder/ title=kubebuilder>kubebuilder</a></li><li><a href=/posts/kubernetes/kubespray/ title=kubespray>kubespray</a></li></ul></li></div></ul></div></div></div></section><section class=content-section id=content-section><div class=content><div class="container p-0 read-area"><div class="hero-area col-sm-12" id=hero-area style=background-image:url(https://oct28-yjkim.github.io/images/default-hero.jpg)></div><div class=page-content><div class="author-profile ml-auto align-self-lg-center"><img class=rounded-circle src=/images/author/john_hu7f9991f5b5d471ecdfc6cff3db1a9fe6_6397_120x120_fit_box_2.png alt="Author Image"><h5 class=author-name>yjkim</h5><p>June 8, 2021</p></div><div class=title><h1>Ceph ansible</h1></div><div class=post-content id=post-content><h2 id=개요>개요</h2><ul><li>Ceph 설치방법은 Ceph-ansible 이며 stable-3.2 버전을 이용하여 설치 하였다.</li><li>설치 노드는<ul><li>mon 1, osd 3, mgr 1 이며 mon1 과 mgr1, osd1 이 같은 호스트에 배포가 되었다.</li><li>ceph0 10.0.3.2 8cpu 16gb ram, /dev/sdb 300gb</li><li>ceph1 10.0.3.3 8cpu 16gb ram, /dev/sdb 300gb</li><li>ceph2 10.0.3.4 8cpu 16gb ram, /dev/sdb 300gb</li></ul></li></ul><h2 id=ceph-prerequirements>ceph prerequirements</h2><ul><li>3node 부팅 Vagrant 로 부팅하면서 /dev/sdb/ 를 생성하도록 하였으며 lvm, fs 생성은 하지 않았다.</li><li>ssh fingerprint 설정</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#75715e># 이방법으로 패스워드 yes, 패스워드 일일이 쳤음 </span>
+ssh-keygen 
+ssh-copy-id ceph0
+ssh-copy-id ceph1
+ssh-copy-id ceph2
+
+<span style=color:#75715e># 핑거프린트 검증용 각 호스트 접속 조회 확인  </span>
+ssh root@ceph0 hostname
+ssh root@ceph1 hostname
+ssh root@ceph2 hostname
+
+
+<span style=color:#75715e># 다른방법으로는 sshpass 가 있다고 한다. 아래와 같이 사용하면 된다. </span>
+yum install -y sshpass
+echo <span style=color:#e6db74>&#34;passwd-content&#34;</span> ~/passwd
+sshpass -f ~/passwd ssh-copy-id root@ceph0
+ssh root@ceph0 hostname 
+</code></pre></div><ul><li>ceph 설치 전 사전 준비<ul><li>Pip, git Clone, 의존성 파일을 받아준다.</li></ul></li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>yum install -y git python-pip sshpass <span style=color:#f92672>&amp;&amp;</span> 
+git clone https://github.com/ceph/ceph-ansible.git <span style=color:#f92672>&amp;&amp;</span> <span style=color:#ae81ff>\
+</span><span style=color:#ae81ff></span>cd ceph-ansible <span style=color:#f92672>&amp;&amp;</span> <span style=color:#ae81ff>\
+</span><span style=color:#ae81ff></span>git checkout  stable-3.2 <span style=color:#f92672>&amp;&amp;</span> <span style=color:#ae81ff>\
+</span><span style=color:#ae81ff></span>pip install -r requirements.txt 
+</code></pre></div><ul><li>/etc/hosts 설정</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>cat <span style=color:#e6db74>&lt;&lt;EOF&gt;&gt; /etc/hosts
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>10.0.3.2 ceph0
+</span><span style=color:#e6db74>10.0.3.3 ceph1
+</span><span style=color:#e6db74>10.0.3.4 ceph2
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>EOF</span>
+
+<span style=color:#75715e># 검증하기위한 조회 </span>
+cat /etc/hosts
+
+<span style=color:#75715e># ceph </span>
+firewall-cmd --permanent --new-service <span style=color:#ae81ff>3300</span> <span style=color:#f92672>&amp;&amp;</span> <span style=color:#ae81ff>\
+</span><span style=color:#ae81ff></span>  firewall-cmd --permanent --new-service <span style=color:#ae81ff>6789</span> <span style=color:#f92672>&amp;&amp;</span> <span style=color:#ae81ff>\
+</span><span style=color:#ae81ff></span>  firewall-cmd --reload
+
+</code></pre></div><h2 id=ceph-ansible-install>ceph ansible install</h2><ul><li>inventory 작성</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>cat <span style=color:#e6db74>&lt;&lt; EOF | tee inventory.ini
+</span><span style=color:#e6db74>[mons]
+</span><span style=color:#e6db74>ceph0
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>[mgrs]
+</span><span style=color:#e6db74>ceph0
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>[osds]
+</span><span style=color:#e6db74>ceph0
+</span><span style=color:#e6db74>ceph1
+</span><span style=color:#e6db74>ceph2
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>[grafana-server]
+</span><span style=color:#e6db74>ceph0
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>[all:children]
+</span><span style=color:#e6db74>mons
+</span><span style=color:#e6db74>osds
+</span><span style=color:#e6db74>mgrs
+</span><span style=color:#e6db74>EOF</span>
+</code></pre></div><ul><li>extra-vars.yml 파일 작성</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>
+cat <span style=color:#e6db74>&lt;&lt;EOF | tee extra.yaml
+</span><span style=color:#e6db74># ceph
+</span><span style=color:#e6db74>monitor_interface: eth1
+</span><span style=color:#e6db74>monitor_address: 10.0.3.2
+</span><span style=color:#e6db74>public_network: 10.0.3.0/24
+</span><span style=color:#e6db74>cluster_network: 10.0.3.0/24
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>ceph_origin: repository
+</span><span style=color:#e6db74>ceph_repository: community
+</span><span style=color:#e6db74>ceph_stable_release: luminous
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>ceph_conf_overrides:
+</span><span style=color:#e6db74>  global:
+</span><span style=color:#e6db74>    mon_allow_pool_delete: true
+</span><span style=color:#e6db74>    osd_pool_default_size: 1
+</span><span style=color:#e6db74>    osd_pool_default_min_size: 1
+</span><span style=color:#e6db74>    osd_pg_stat_report_internal_max: 1
+</span><span style=color:#e6db74>  osd:
+</span><span style=color:#e6db74>    osd_min_pg_log_entries: 10
+</span><span style=color:#e6db74>    osd_max_pg_log_entries: 10
+</span><span style=color:#e6db74>    osd_pg_log_dups_tracked: 10
+</span><span style=color:#e6db74>    osd_pg_log_trim_min: 10
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>osd_objectstore: bluestore
+</span><span style=color:#e6db74>#lvm_volumes:
+</span><span style=color:#e6db74>#  - data: /dev/sda
+</span><span style=color:#e6db74>#  - data: /dev/sdb
+</span><span style=color:#e6db74>osd_scenario: collocated
+</span><span style=color:#e6db74>dmcrypt: true
+</span><span style=color:#e6db74>devices:
+</span><span style=color:#e6db74>  - /dev/sdb
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>openstack_config: true
+</span><span style=color:#e6db74>kube_pool:
+</span><span style=color:#e6db74>  name: &#34;kube&#34;
+</span><span style=color:#e6db74>  pg_num: 64
+</span><span style=color:#e6db74>  pgp_num: 64
+</span><span style=color:#e6db74>  rule_name: &#34;replicated_rule&#34;
+</span><span style=color:#e6db74>  type: 1
+</span><span style=color:#e6db74>  erasure_profile: &#34;&#34;
+</span><span style=color:#e6db74>  expected_num_objects: &#34;&#34;
+</span><span style=color:#e6db74>  application: &#34;rbd&#34;
+</span><span style=color:#e6db74>openstack_glance_pool:
+</span><span style=color:#e6db74>  name: &#34;images&#34;
+</span><span style=color:#e6db74>  pg_num: 64
+</span><span style=color:#e6db74>  pgp_num: 64
+</span><span style=color:#e6db74>  rule_name: &#34;replicated_rule&#34;
+</span><span style=color:#e6db74>  type: 1
+</span><span style=color:#e6db74>  erasure_profile: &#34;&#34;
+</span><span style=color:#e6db74>  expected_num_objects: &#34;&#34;
+</span><span style=color:#e6db74>openstack_cinder_pool:
+</span><span style=color:#e6db74>  name: &#34;volumes&#34;
+</span><span style=color:#e6db74>  pg_num: 64
+</span><span style=color:#e6db74>  pgp_num: 64
+</span><span style=color:#e6db74>  rule_name: &#34;replicated_rule&#34;
+</span><span style=color:#e6db74>  type: 1
+</span><span style=color:#e6db74>  erasure_profile: &#34;&#34;
+</span><span style=color:#e6db74>  expected_num_objects: &#34;&#34;
+</span><span style=color:#e6db74>openstack_cinder_backup_pool:
+</span><span style=color:#e6db74>  name: &#34;backups&#34;
+</span><span style=color:#e6db74>  pg_num: 2
+</span><span style=color:#e6db74>  pgp_num: 2
+</span><span style=color:#e6db74>  rule_name: &#34;replicated_rule&#34;
+</span><span style=color:#e6db74>  type: 1
+</span><span style=color:#e6db74>  erasure_profile: &#34;&#34;
+</span><span style=color:#e6db74>  expected_num_objects: &#34;&#34;
+</span><span style=color:#e6db74>openstack_nova_vms_pool:
+</span><span style=color:#e6db74>  name: &#34;vms&#34;
+</span><span style=color:#e6db74>  pg_num: 64
+</span><span style=color:#e6db74>  pgp_num: 64
+</span><span style=color:#e6db74>  rule_name: &#34;replicated_rule&#34;
+</span><span style=color:#e6db74>  type: 1
+</span><span style=color:#e6db74>  erasure_profile: &#34;&#34;
+</span><span style=color:#e6db74>  expected_num_objects: &#34;&#34;
+</span><span style=color:#e6db74>  application: &#34;rbd&#34;
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>openstack_pools:
+</span><span style=color:#e6db74>  - &#34;{{ kube_pool }}&#34;
+</span><span style=color:#e6db74>  - &#34;{{ openstack_glance_pool }}&#34;
+</span><span style=color:#e6db74>  - &#34;{{ openstack_cinder_pool }}&#34;
+</span><span style=color:#e6db74>  - &#34;{{ openstack_cinder_backup_pool }}&#34;
+</span><span style=color:#e6db74>  - &#34;{{ openstack_nova_vms_pool }}&#34;
+</span><span style=color:#e6db74>EOF</span>
+
+</code></pre></div><ul><li>ping 체크</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>ansible -b -i inventory.ini -m ping all
+</code></pre></div><ul><li>ansible playbook site 스크립트를 실행하여 설치</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>
+ cp site.yml.sample site.yml
+
+INVENTORY<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;-i inventory.ini&#34;</span>
+EXTRA<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;-e @extra.yaml&#34;</span>
+OPTION<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;-b -vvvv&#34;</span>
+PLAY<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;site.yml&#34;</span>
+ansible-playbook $INVENTORY $EXTRA $PLAY $OPTION 
+<span style=color:#75715e># ansible-playbook -b -vvvv -i inventory.ini -e @extra.yaml site.yaml</span>
+
+</code></pre></div><h2 id=ceph-ansible-remove>ceph ansible remove</h2><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>
+cat <span style=color:#e6db74>&lt;&lt; EOF | tee purge=cluster.sh 
+</span><span style=color:#e6db74>#!/bin/bash 
+</span><span style=color:#e6db74>set -ex 
+</span><span style=color:#e6db74>INVENTORY=&#34;-i inventory.ini&#34;
+</span><span style=color:#e6db74>EXTRA=&#34;-e @extra.yaml&#34;
+</span><span style=color:#e6db74>PLAY=&#34;infrastructure-playbooks/purge-cluster.yml&#34;
+</span><span style=color:#e6db74>OPTION=&#34;-b -vvv&#34;
+</span><span style=color:#e6db74>ansible-playbook $INVENTORY $EXTRA $PLAY $OPTION 
+</span><span style=color:#e6db74>EOF</span>
+chmod +x purge<span style=color:#f92672>=</span>cluster.sh  <span style=color:#f92672>&amp;&amp;</span> purge<span style=color:#f92672>=</span>cluster.sh
+
+</code></pre></div><h2 id=주로-발생한-error>주로 발생한 Error</h2><ul><li>/etc/ceph.conf 의 mon host 값 문제<ul><li>ceph-ansible 4.0 버전의 Source 는 task 파일의 Jinja template 를 확인해보면</li><li>mon 호스트를 루프 돌면서 호스트 정보를 찍어주는데</li><li>mon v2, v1 버전을 마이그래이션 하는 소스가 들어가있다.</li><li>그렇기때문에 git 다운받고 checkout stable-3.2 버전으로 실행시키며</li><li>extra.yaml 에 monitor_address 값을 넣어준다.</li></ul></li><li>에러내용</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>fatal: <span style=color:#f92672>[</span>mon1<span style=color:#f92672>]</span>: FAILED! <span style=color:#f92672>=</span>&gt; 
+  msg: |-
+    The conditional check <span style=color:#e6db74>&#39;(ceph_health_raw.stdout != &#34;&#34;) and (ceph_health_raw.stdout | default(&#39;</span><span style=color:#f92672>{}</span><span style=color:#e6db74>&#39;) | from_json)[&#39;</span>state<span style=color:#e6db74>&#39;] in [&#39;</span>leader<span style=color:#e6db74>&#39;, &#39;</span>peon<span style=color:#e6db74>&#39;]
+</span><span style=color:#e6db74>    &#39;</span> failed. The error was: No JSON object could be decoded
+</code></pre></div><ul><li>조치사항</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#75715e>#조치 1 branch checkout </span>
+$ git checkout stable-3.2
+
+$ vi extre.yaml
+---
+<span style=color:#75715e># extra.yaml </span>
+monitor_interface: eth1
+<span style=color:#75715e>#monitor_address: 10.0.3.2 ## 조치 2 여기부분</span>
+public_network: 10.0.3.0/24
+cluster_network: 10.0.3.0/24
+---
+
+* 참고  : https://github.com/ceph/ceph-ansible/issues/3948
+* 참고2 : http://lists.ceph.com/pipermail/ceph-users-ceph.com/2019-February/032801.html
+</code></pre></div></div><div class=btn-improve-page><a href=https://github.com/oct28-yjkim/oct28-yjkim.github.io/edit//content/posts/ceph/ceph-ansible/index.md title="Improve this page" target=_blank rel=noopener><i class="fas fa-code-branch"></i>Improve this page</a></div><hr><div class="row next-prev-navigator"><div class="col-md-6 previous-article"><a href=/posts/category/sub-category/shortcodes/ title="Shortcodes Samples" class="btn btn-outline-info"><div><i class="fas fa-chevron-circle-left"></i>Prev</div><div class=next-prev-text>Shortcodes Samples</div></a></div><div class="col-md-6 next-article"><a href=/posts/ceph/ceph-commands/ title="Ceph commands" class="btn btn-outline-info"><div>Next <i class="fas fa-chevron-circle-right"></i></div><div class=next-prev-text>Ceph commands</div></a></div></div><hr></div></div></div><a id=scroll-to-top class=btn><i class="fas fa-chevron-circle-up"></i></a></section><section class=toc-section id=toc-section><div class=toc-holder><h5 class="text-center pl-3">Table of Contents</h5><hr><div class=toc><nav id=TableOfContents><ul><li><a href=#개요>개요</a></li><li><a href=#ceph-prerequirements>ceph prerequirements</a></li><li><a href=#ceph-ansible-install>ceph ansible install</a></li><li><a href=#ceph-ansible-remove>ceph ansible remove</a></li><li><a href=#주로-발생한-error>주로 발생한 Error</a></li></ul></nav></div></div></section></div><footer class="container-fluid text-center align-content-center footer pb-2"><div class="container pt-5"><div class="row text-left"><div class="col-md-4 col-sm-12"><h5>Navigation</h5><ul><li class=nav-item><a class=smooth-scroll href=/#about>About</a></li><li class=nav-item><a class=smooth-scroll href=/#skills>Skills</a></li><li class=nav-item><a class=smooth-scroll href=/#experiences>Experiences</a></li><li class=nav-item><a class=smooth-scroll href=/#recent-posts>Recent Posts</a></li></ul></div><div class="col-md-4 col-sm-12"><h5>Contact me:</h5><ul><li><span>Email:</span> <span>oct28-yjkim@google.com</span></li></ul></div></div></div><hr><div class=container><div class="row text-left"><div class=col-md-4><a id=theme href=https://github.com/hossainemruz/toha target=_blank rel=noopener><img src=/images/theme-logo_hu8376fd15465fef26ffe66b6bcf0ca686_13669_32x0_resize_box_2.png alt="Toha Theme Logo">
+Toha</a></div><div class="col-md-4 text-center">© 2020 Copyright.</div><div class="col-md-4 text-right"><a id=hugo href=https://gohugo.io/ target=_blank rel=noopener>Powered by
+<img src=/images/hugo-logo.svg alt="Hugo Logo" height=18></a></div></div></div></footer><script type=text/javascript src=/js/jquery-3.4.1.min.js></script><script type=text/javascript src=/js/popper.min.js></script><script type=text/javascript src=/js/bootstrap.min.js></script><script type=text/javascript src=/js/navbar.js></script><script type=text/javascript src=/js/plyr.js></script><script type=text/javascript src=/js/main.js></script><script src=https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/highlight.min.js></script><script src=/js/single.js></script><script>hljs.initHighlightingOnLoad();</script><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css integrity=sha384-zB1R0rpPzHqg7Kpt0Aljp8JPLqbXI3bhnPWROx27a9N0Ll6ZP/+DiW/UqRcLbRjq crossorigin=anonymous><script defer src=https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js integrity=sha384-y23I5Q6l+B6vatafAwxRu/0oK/79VlbSz7Q9aiSZUvyWYIYsd+qj+o24G5ZU2zJz crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js integrity=sha384-kWPLUVMOks5AQFrykwIup5lo0m3iMkkHrD0uJ4H5cjeGihAutqP0yW0J6dpFiVkI crossorigin=anonymous onload=renderMathInElement(document.body);></script></body></html>
