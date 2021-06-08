@@ -1,11 +1,11 @@
 ---
-title: "Kubebuilder 을 이용한 K8s CustomResource 개발"
+title: "helm chart 를 이용한 package"
 date: 2021-06-08T08:06:25+06:00
-description: K8s Operator with kubebuilder
+description: helm chart 사용법
 menu:
   sidebar:
-    name: kubebuilder
-    identifier: kubebuilder
+    name: how to use helm chart
+    identifier: helm-chart
     parent: Kubernetes
     weight: 20
 author:
