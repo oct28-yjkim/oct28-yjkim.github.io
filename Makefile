@@ -1,9 +1,13 @@
 pull:
 	echo "1"
 
+sub_checkout:
+	git submodule update --init --recursive  
+
 run: 
 	docker run  -it --rm --name hugo -d \
 		-v ${PWD}:/src \
+		 --user 1000:1000 \
 		-p 1313:1313 \
 		klakegg/hugo:0.83.1-ext-alpine server 
 
