@@ -11,8 +11,8 @@ section:
 designation: Software Engineer
 # your company information
 company:
-  name: Example Co.
-  url: "https://www.example.com"
+  name: nTels Co.
+  url: "https://www.ntels.com/"
 
 # your resume. this file path should be relative to you "static" directory
 resume: "files/resume.pdf"
@@ -25,7 +25,7 @@ summary: 'I am a passionate software engineer with x years of working experience
 socialLinks:
 - name: Github
   icon: "fab fa-github"
-  url: "https://www.github.com/example"
+  url: "https://www.github.com/oct28-yjkim"
 
 # your soft skills
 # give the percentage between 50 to 100 with 5 intervals.
