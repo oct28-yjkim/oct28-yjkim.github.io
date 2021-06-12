@@ -4,7 +4,7 @@ date: 2021-06-08T08:06:25+06:00
 description: helm chart 사용법
 menu:
   sidebar:
-    name: how to use helm chart
+    name: =helm chart
     identifier: helm-chart
     parent: Kubernetes
     weight: 20
