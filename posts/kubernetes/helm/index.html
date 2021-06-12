@@ -4,323 +4,394 @@
 yjkim's Blog</a>
 <button class="navbar-toggler navbar-light" id=toc-toggler type=button onclick=toggleTOC()>
 <span class=navbar-toggler-icon></span></button><div class="collapse navbar-collapse lang-selector" id=top-nav-items><ul class="navbar-nav ml-auto"></ul></div></div><img src=/images/site/main-logo_hu9ad2f25a877e6fef77c7a3dbef5094ad_6881_42x0_resize_box_2.png class=d-none id=main-logo alt=Logo>
-<img src=/images/site/inverted-logo_hub02d7508a1c89b2b7812eab204efeb9a_4223_42x0_resize_box_2.png class=d-none id=inverted-logo alt="Inverted Logo"></nav><section class=sidebar-section id=sidebar-section><div class=sidebar-holder><div class=sidebar id=sidebar><form class=mx-auto method=get action=/search><input type=text name=keyword placeholder=Search data-search id=search-box></form><div class=sidebar-tree><ul class=tree id=tree><li id=list-heading><a href=/posts data-filter=all>Posts</a></li><div class=subtree><li><a href=/posts/introduction/ title=Introduction>Introduction</a></li><li><i class="fas fa-plus-circle"></i><a href=/posts/category/>Category</a><ul><li><i class="fas fa-plus-circle"></i><a href=/posts/category/sub-category/>Sub-Category</a><ul><li><a href=/posts/category/sub-category/rich-content/ title="Rich Content">Rich Content</a></li><li><a href=/posts/category/sub-category/markdown-sample/ title="Markdown Sample">Markdown Sample</a></li><li><a href=/posts/category/sub-category/shortcodes/ title="Shortcodes Sample">Shortcodes Sample</a></li></ul></li></ul></li><li><i class="fas fa-plus-circle"></i><a href=/posts/ceph/>Ceph</a><ul><li><a href=/posts/ceph/ceph-ansible/ title=ceph-ansible>ceph-ansible</a></li><li><a href=/posts/ceph/ceph-commands/ title=ceph-commands>ceph-commands</a></li><li><a href=/posts/ceph/ceph-connect/ title=ceph-connect>ceph-connect</a></li></ul></li><li><i class="fas fa-minus-circle"></i><a class=active href=/posts/kubernetes/>Kubernetes</a><ul class=active><li><a class=active href=/posts/kubernetes/helm/ title="how to use helm chart">how to use helm chart</a></li><li><a href=/posts/kubernetes/kubebuilder/ title=kubebuilder>kubebuilder</a></li><li><a href=/posts/kubernetes/kubespray/ title=kubespray>kubespray</a></li></ul></li></div></ul></div></div></div></section><section class=content-section id=content-section><div class=content><div class="container p-0 read-area"><div class="hero-area col-sm-12" id=hero-area style=background-image:url(https://oct28-yjkim.github.io/images/default-hero.jpg)></div><div class=page-content><div class="author-profile ml-auto align-self-lg-center"><img class=rounded-circle src=/images/author/john_hu7f9991f5b5d471ecdfc6cff3db1a9fe6_6397_120x120_fit_box_2.png alt="Author Image"><h5 class=author-name>yjkim</h5><p>June 8, 2021</p></div><div class=title><h1>helm chart 를 이용한 package</h1></div><div class=post-content id=post-content><h2 id=개요>개요</h2><ul><li>Kubernetes 의 deployment, statefulset 등의 API 들은 모두 Kubernetes 의 Controller 의 구현체이다.</li><li>위의 정의되어 있는 형식 외의 다른 형식의 API 를 구성하는것을 CustomResource 라고 하며 K8s 내에는 CustomResourceDefine, CustomResource 를 통하여 API를 정의 하고 정의 한 API 를 사용 하는 방법이 가능하다.</li><li>이번 블로그 시리즈에서는 KubeBuilder 을 이용하여 CRD 및 CR 을 생성 하여 배포 하는 방법에 대하여 작성 하려 한다.</li><li>Kuberbuilder 는 CRD 를 생성을 편하게 도와주는 boilerplate 프로젝트 이다.</li></ul><h2 id=순서>순서</h2><ol><li>설치</li><li>sample operator 개발</li><li>build and push operator</li></ol><h2 id=설치>설치</h2><ul><li><p>golang version v1.13</p></li><li><p>docker version v17.03+</p></li><li><p>kubectl v1.11.3+</p></li><li><p>kubernetes cluster v1.11.3+</p><ul><li>공식 홈에서는 위와같이 나오는데 kustomize 를 내장하여 사용하고 있으며 설치 필요하다.</li></ul></li><li><p>golang 설치</p></li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#f92672>{</span>
-    wget https://golang.org/dl/go1.15.6.linux-amd64.tar.gz
-    tar -C /usr/local -xzf go1.15.6.linux-amd64.tar.gz
-    export PATH<span style=color:#f92672>=</span>$PATH:/usr/local/go/bin
-    go version
-<span style=color:#f92672>}</span>
-go version go1.15.6 linux/amd64
-</code></pre></div><ul><li>docker 설치</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#f92672>{</span>
-    sudo yum install -y yum-utils
-    sudo yum-config-manager <span style=color:#ae81ff>\
-</span><span style=color:#ae81ff></span>        --add-repo <span style=color:#ae81ff>\
-</span><span style=color:#ae81ff></span>        https://download.docker.com/linux/centos/docker-ce.repo
-    
-    sudo yum install -y docker-ce docker-ce-cli containerd.io wget jq git gcc 
-    sudo systemctl enable docker <span style=color:#f92672>&amp;&amp;</span> sudo systemctl start docker 
-<span style=color:#f92672>}</span>
-</code></pre></div><ul><li>kustomize install</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>curl -s <span style=color:#e6db74>&#34;https://raw.githubusercontent.com/\
-</span><span style=color:#e6db74>kubernetes-sigs/kustomize/master/hack/install_kustomize.sh&#34;</span>  | bash
-install kustomize /usr/local/bin  
-</code></pre></div><ul><li>kubectl install<ul><li>개발하는 서버에서 minikube 로 배포 해도 되고, On premise 로 구축된 서버에 배포 해도 된다.</li></ul></li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#f92672>{</span>
-    curl -LO <span style=color:#e6db74>&#34;https://storage.googleapis.com/kubernetes-release/release/</span><span style=color:#66d9ef>$(</span>curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt<span style=color:#66d9ef>)</span><span style=color:#e6db74>/bin/linux/amd64/kubectl&#34;</span>
-    chmod +x ./kubectl
-    sudo mv ./kubectl /usr/local/bin/kubectl
-    kubectl version --client
-<span style=color:#f92672>}</span>
-Client Version: version.Info<span style=color:#f92672>{</span>Major:<span style=color:#e6db74>&#34;1&#34;</span>, Minor:<span style=color:#e6db74>&#34;20&#34;</span>, GitVersion:<span style=color:#e6db74>&#34;v1.20.2&#34;</span>, GitCommit:<span style=color:#e6db74>&#34;faecb196815e248d3ecfb03c680a4507229c2a56&#34;</span>, GitTreeState:<span style=color:#e6db74>&#34;clean&#34;</span>, BuildDate:<span style=color:#e6db74>&#34;2021-01-13T13:28:09Z&#34;</span>, GoVersion:<span style=color:#e6db74>&#34;go1.15.5&#34;</span>, Compiler:<span style=color:#e6db74>&#34;gc&#34;</span>, Platform:<span style=color:#e6db74>&#34;linux/amd64&#34;</span><span style=color:#f92672>}</span>
-</code></pre></div><ul><li>kubebuilder install</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>$ <span style=color:#f92672>{</span>
-    version<span style=color:#f92672>=</span>2.3.1 <span style=color:#75715e># latest stable version</span>
-    arch<span style=color:#f92672>=</span>amd64
+<img src=/images/site/inverted-logo_hub02d7508a1c89b2b7812eab204efeb9a_4223_42x0_resize_box_2.png class=d-none id=inverted-logo alt="Inverted Logo"></nav><section class=sidebar-section id=sidebar-section><div class=sidebar-holder><div class=sidebar id=sidebar><form class=mx-auto method=get action=/search><input type=text name=keyword placeholder=Search data-search id=search-box></form><div class=sidebar-tree><ul class=tree id=tree><li id=list-heading><a href=/posts data-filter=all>Posts</a></li><div class=subtree><li><a href=/posts/introduction/ title=Introduction>Introduction</a></li><li><i class="fas fa-plus-circle"></i><a href=/posts/category/>Category</a><ul><li><i class="fas fa-plus-circle"></i><a href=/posts/category/sub-category/>Sub-Category</a><ul><li><a href=/posts/category/sub-category/rich-content/ title="Rich Content">Rich Content</a></li><li><a href=/posts/category/sub-category/markdown-sample/ title="Markdown Sample">Markdown Sample</a></li><li><a href=/posts/category/sub-category/shortcodes/ title="Shortcodes Sample">Shortcodes Sample</a></li></ul></li></ul></li><li><i class="fas fa-plus-circle"></i><a href=/posts/ceph/>Ceph</a><ul><li><a href=/posts/ceph/ceph-ansible/ title=ceph-ansible>ceph-ansible</a></li><li><a href=/posts/ceph/ceph-commands/ title=ceph-commands>ceph-commands</a></li><li><a href=/posts/ceph/ceph-connect/ title=ceph-connect>ceph-connect</a></li></ul></li><li><i class="fas fa-minus-circle"></i><a class=active href=/posts/kubernetes/>Kubernetes</a><ul class=active><li><a class=active href=/posts/kubernetes/helm/ title="how to use helm chart">how to use helm chart</a></li><li><a href=/posts/kubernetes/kubebuilder/ title=kubebuilder>kubebuilder</a></li><li><a href=/posts/kubernetes/kubespray/ title=kubespray>kubespray</a></li></ul></li></div></ul></div></div></div></section><section class=content-section id=content-section><div class=content><div class="container p-0 read-area"><div class="hero-area col-sm-12" id=hero-area style=background-image:url(https://oct28-yjkim.github.io/images/default-hero.jpg)></div><div class=page-content><div class="author-profile ml-auto align-self-lg-center"><img class=rounded-circle src=/images/author/john_hu7f9991f5b5d471ecdfc6cff3db1a9fe6_6397_120x120_fit_box_2.png alt="Author Image"><h5 class=author-name>yjkim</h5><p>June 8, 2021</p></div><div class=title><h1>helm chart 를 이용한 package</h1></div><div class=post-content id=post-content><h2 id=helm-project-소개>Helm Project 소개</h2><p>Helm 이란 Kubernetes Manafest 의 버전관리 및 Packageing 를 도와주는 Opensource Project 이다.
+만약 App이 개발이 되었을 시에는 단순 1개의 Manifest 가 아니라 Deployment, Configmap, Secret 등등 기타 관리 되어야 할 파일들이 늘어날 것이다.
+해당 파일들은 버전이 올라가게 되면서 다른 변경점을 가진 파일들이 늘어 날 것이고 프로젝트가 복잡해지면서 관리 하기는 어려워 질 것이다.
+그리하여 Helm Project 에서는 <code>Chart</code> 라는 Manifest 를 관리하기 위한 Group 개념을 지원한다.
+Chart 를 배포하기 위한 Helm <code>Repo</code> 구성도 가능하다. 일반적인 Http, nginx 웹 서버 혹은 github 를 사용한다면 쉽게 이용이 가능하다.
+helm Chart 로 배포 한 Package 는 <code>Release</code> 로 불린다.</p><h2 id=helm-cli-설치>Helm cli 설치</h2><p>설치는 helm cli 를 다운 받으면 끝난다.
+helm cli를 통하여 chart 를 배포 요청 하면 helm cli 에서 kubernetes manifest 로 변환을 해주고 배포 해준다.
+배포시에는 기본 KUBECONFIG 환경변수 인 ~/.kube/config 정보를 참조 하여 배포 요청 한다.</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#75715e>## 방법 1</span>
+<span style=color:#75715e># release 다운로드 페이지에서 다운 받기</span>
+https github com helm helm releases
+<span style=color:#75715e>## 방법 2</span>
+<span style=color:#75715e># window package mgmt 사용 cholatey</span>
+choco install kubernetes helm
+<span style=color:#75715e>## 방법 3</span>
+<span style=color:#75715e># linux snap store 에서 다운</span>
+sudo snap install helm classic
+<span style=color:#75715e>## 방법 4</span>
+<span style=color:#75715e># script 로 다운 받기</span>
+curl https raw githubusercontent com helm helm master scripts get helm <span style=color:#ae81ff>3</span> | bash
+</code></pre></div><h2 id=helm-cli-를-이용한-chart-사용법>helm cli 를 이용한 chart 사용법</h2><h4 id=helm-search-command>helm search command</h4><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#75715e># helm search hub : https://hub.helm.sh/ 에서 검색</span>
+<span style=color:#f92672>[</span>root@di7-03 ~<span style=color:#f92672>]</span><span style=color:#75715e># helm search hub gitlab</span>
+URL                                               	CHART VERSION   	APP VERSION     	DESCRIPTION                                       
+https://hub.helm.sh/charts/choerodon/gitlab-ser...	0.21.0          	0.21.0          	gitlab-service <span style=color:#66d9ef>for</span> Choerodon                      
+https://hub.helm.sh/charts/choerodon/gitlab       	0.5.4           	0.5.4           	gitlab <span style=color:#66d9ef>for</span> Choerodon                              
+https://hub.helm.sh/charts/choerodon/gitlab-runner	0.2.4           	0.2.4           	gitlab-runner <span style=color:#66d9ef>for</span> Choerodon             
 
-    <span style=color:#75715e># download the release</span>
-    curl -L -O <span style=color:#e6db74>&#34;https://github.com/kubernetes-sigs/kubebuilder/releases/download/v</span><span style=color:#e6db74>${</span>version<span style=color:#e6db74>}</span><span style=color:#e6db74>/kubebuilder_</span><span style=color:#e6db74>${</span>version<span style=color:#e6db74>}</span><span style=color:#e6db74>_linux_</span><span style=color:#e6db74>${</span>arch<span style=color:#e6db74>}</span><span style=color:#e6db74>.tar.gz&#34;</span>
+<span style=color:#75715e># helm search repo : local 에 등록된 repo 에서 검색 </span>
+<span style=color:#f92672>[</span>root@di7-03 ~<span style=color:#f92672>]</span><span style=color:#75715e># helm search repo gitlab</span>
+NAME                         	CHART VERSION	APP VERSION	DESCRIPTION                                       
+gitlab/gitlab                	3.1.4        	12.8.6     	Web-based Git-repository manager with wiki and ...
+gitlab/gitlab-omnibus        	0.1.37       	           	GitLab Omnibus all-in-one bundle                  
+gitlab/gitlab-runner         	0.14.0       	12.8.0     	GitLab Runner                                     
+</code></pre></div><h4 id=helm-install-command>helm install command</h4><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#f92672>[</span>root@di7-03 ~<span style=color:#f92672>]</span><span style=color:#75715e># helm install chf-maria stable/mariadb --namespace default</span>
+WARNING: This chart is deprecated
+NAME: chf-maria
+LAST DEPLOYED: Wed Apr  <span style=color:#ae81ff>1</span> 23:35:02 <span style=color:#ae81ff>2020</span>
+NAMESPACE: default
+STATUS: deployed
+REVISION: <span style=color:#ae81ff>1</span>
+NOTES:
+<span style=color:#f92672>[</span>root@di7-03 ~<span style=color:#f92672>]</span><span style=color:#75715e># helm list</span>
+NAME     	NAMESPACE	REVISION	UPDATED                                	STATUS  	CHART         	APP VERSION
+chf-maria	default  	<span style=color:#ae81ff>1</span>       	2020-04-01 23:35:02.149481848 +0900 KST	deployed	mariadb-7.3.13	10.3.22    
 
-    <span style=color:#75715e># extract the archive</span>
-    tar -zxvf kubebuilder_<span style=color:#e6db74>${</span>version<span style=color:#e6db74>}</span>_linux_<span style=color:#e6db74>${</span>arch<span style=color:#e6db74>}</span>.tar.gz
-    mv kubebuilder_<span style=color:#e6db74>${</span>version<span style=color:#e6db74>}</span>_linux_<span style=color:#e6db74>${</span>arch<span style=color:#e6db74>}</span> kubebuilder <span style=color:#f92672>&amp;&amp;</span> sudo mv kubebuilder /usr/local/
+<span style=color:#75715e># helm fetch 후 install </span>
 
-    <span style=color:#75715e># update your PATH to include /usr/local/kubebuilder/bin</span>
-    export PATH<span style=color:#f92672>=</span>$PATH:/usr/local/kubebuilder/bin
-<span style=color:#f92672>}</span>
-$ kubebuilder --version 
-2021/01/20 09:42:48 kubebuilder must be run from the project root under $GOPATH/src/&lt;package&gt;.
-Current GOPATH<span style=color:#f92672>=</span>/root/go.
-Current directory<span style=color:#f92672>=</span>/root/crd
-</code></pre></div><p>여기까지 설치 하면 로컬에서</p><ul><li>K8s CRD</li><li>Operator</li><li>쿠베에 배포 하기 위한 client
-까지는 준비 된것이다.</li></ul><h2 id=create-simple-project>create simple project</h2><ul><li>Kubebuilder 로 생성하고자 하는 K8s Project 를 생성 한다.</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>$ mkdir crd 
-$ cd crd
-$ go mod init yjkim.io
-<span style=color:#75715e># go: creating new go.mod: module yjkim.io</span>
-</code></pre></div><ul><li>K8s CRD 를 정의 한다.<ul><li>controller runtime builder 을 이용하여 manager, controller golang package 를 생성 해준다.</li><li>Workload API Spec 를 정의 하면 해당 workload 에 맞게 Recoile 로직을 작성 하면 된다.</li></ul></li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>$ kubebuilder init --domain goldilocks.io --license apache2 --owner <span style=color:#e6db74>&#34;nTels.com&#34;</span>
-Writing scaffold <span style=color:#66d9ef>for</span> you to edit...
-Get controller runtime:
-go get sigs.k8s.io/controller-runtime@v0.5.0
-go: downloading sigs.k8s.io/controller-runtime v0.5.0
-go build -o bin/manager main.go
-Next: define a resource with:
-$ kubebuilder create api
-</code></pre></div><ul><li>API 정보를 생성 해준다.<ul><li>OpenAPI v3 으로 생성 해주며 spec 정보는 <code>/api</code> 폴더를 참고 하면 된다.</li><li>물론 app 형상에 맞게 변경 해주어야 한다.</li></ul></li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>$ kubebuilder create api --group group --version v1 --kind Group
-Create Resource <span style=color:#f92672>[</span>y/n<span style=color:#f92672>]</span>
-y
-Create Controller <span style=color:#f92672>[</span>y/n<span style=color:#f92672>]</span>
-y
+<span style=color:#75715e># helm unpacked chart install </span>
 
-Writing scaffold <span style=color:#66d9ef>for</span> you to edit...
-api/v1/group_types.go
-controllers/group_controller.go
-Running make:
-$ make
-which: no controller-gen in <span style=color:#f92672>(</span>/usr/local/sbin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin:/usr/local/go/bin:/usr/local/go/bin:/root/bin:/usr/local/bin:/usr/local/kubebuilder/bin:/root/bin:/usr/local/bin:/usr/local/go/bin:/root/bin:/usr/local/bin:/usr/local/go/bin:/usr/local/kubebuilder/bin:/usr/local/kubebuilder/bin<span style=color:#f92672>)</span>
-go: creating new go.mod: module tmp
-go: found sigs.k8s.io/controller-tools/cmd/controller-gen in sigs.k8s.io/controller-tools v0.2.5
-/root/go/bin/controller-gen object:headerFile<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;hack/boilerplate.go.txt&#34;</span> paths<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;./...&#34;</span>
-go fmt ./...
-go vet ./...
-go build -o bin/manager main.go
+<span style=color:#75715e># public 망에서 url 기반 install </span>
+</code></pre></div><ul><li>values override<ul><li><code>helm show values</code> 명령어로 chart values.yaml 값 조회</li><li><code>--set</code> 혹은 <code>--values, -f</code> arg 로 override 하기</li></ul></li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>helm show values stable/mariadb
 
-<span style=color:#75715e># api 에서 y 를 선택 하면 아래 groups_type.go 가 생성 된다. </span>
-$ ls -al api/v1/
-group_types.go            groupversion_info.go      zz_generated.deepcopy.go
+echo <span style=color:#e6db74>&#39;{mariadbUser: user0, mariadbDatabase: user0db}&#39;</span> &gt; config.yaml
+helm install -f config.yaml stable/mariadb --generate-name
+</code></pre></div><h4 id=helm-status-command>helm status command</h4><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#75715e># helm notice 출력 </span>
+<span style=color:#f92672>[</span>root@di7-03 ~<span style=color:#f92672>]</span><span style=color:#75715e># helm status chf-maria</span>
+NAME: chf-maria
+LAST DEPLOYED: Wed Apr  <span style=color:#ae81ff>1</span> 23:35:02 <span style=color:#ae81ff>2020</span>
+NAMESPACE: default
+STATUS: deployed
+</code></pre></div><h4 id=helm-upgrade-command>helm upgrade command</h4><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#75715e># update </span>
+<span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># helm list</span>
+NAME	NAMESPACE	REVISION	UPDATED                                	STATUS  	CHART         	APP VERSION
+abc 	default  	<span style=color:#ae81ff>1</span>       	2020-04-01 23:41:38.996393571 +0900 KST	deployed	mariadb-7.3.13	10.3.22    
 
-<span style=color:#75715e># api 생성시에 controller 생성 프롬프트에서 y 를 선택하면 아래 group_controller.go 파일이 생성된다. </span>
-$ ls -al controllers/
-group_controller.go  suite_test.go
-</code></pre></div><ul><li>생성한 CRD 를 K8s 에 배포 해본다.</li><li>아무런 변화는 없을 것이며 K8s 에서 API 적으로 배포 된 형상만 출력 될 것이다.</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#75715e># 만든 controller 을 실행 한다. </span>
-$ make install <span style=color:#f92672>&amp;&amp;</span> make run 
+<span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># echo &#39;{mariadbUser: user0, mariadbDatabase: user0db}&#39; &gt; config.yaml</span>
 
-<span style=color:#75715e># ctrl + c 로 종료 </span>
+<span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># helm upgrade -f config.yaml abc stable/mariadb</span>
+WARNING: This chart is deprecated
+Release <span style=color:#e6db74>&#34;abc&#34;</span> has been upgraded. Happy Helming!
+NAME: abc
+LAST DEPLOYED: Wed Apr  <span style=color:#ae81ff>1</span> 23:43:15 <span style=color:#ae81ff>2020</span>
+NAMESPACE: default
+STATUS: deployed
+REVISION: <span style=color:#ae81ff>2</span>
+NOTES:
+This Helm chart is deprecated
 
-<span style=color:#75715e># 클러스터에 설치된 customresource 를 삭제한다. </span>
-$ make 
-</code></pre></div><h2 id=나만의-customresource-생성하기>나만의 CustomResource 생성하기</h2><p>이제 CRD 를 생성 하고 K8s 에 CRD, CR 까지 배포 해보았다.</p><ul><li>생성한 Project 구성을 보자</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>$ tree -d .
+<span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># helm get values abc</span>
+USER-SUPPLIED VALUES:
+mariadbDatabase: user0db
+mariadbUser: user0
+
+<span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># helm list</span>
+NAME	NAMESPACE	REVISION	UPDATED                                	STATUS  	CHART         	APP VERSION
+abc 	default  	<span style=color:#ae81ff>2</span>       	2020-04-01 23:43:15.567604711 +0900 KST	deployed	mariadb-7.3.13	10.3.22    
+</code></pre></div><h4 id=helm-rollback-command>helm rollback command</h4><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># helm list</span>
+NAME	NAMESPACE	REVISION	UPDATED                                	STATUS  	CHART         	APP VERSION
+abc 	default  	<span style=color:#ae81ff>2</span>       	2020-04-01 23:43:15.567604711 +0900 KST	deployed	mariadb-7.3.13	10.3.22    
+<span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># helm get values abc</span>
+USER-SUPPLIED VALUES:
+mariadbDatabase: user0db
+mariadbUser: user0
+
+<span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># helm ls</span>
+NAME	NAMESPACE	REVISION	UPDATED                                	STATUS  	CHART         	APP VERSION
+abc 	default  	<span style=color:#ae81ff>3</span>       	2020-04-01 23:46:51.761668024 +0900 KST	deployed	mariadb-7.3.13	10.3.22    
+
+<span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># helm get values abc</span>
+USER-SUPPLIED VALUES:
+null
+
+<span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># helm history abc</span>
+REVISION	UPDATED                 	STATUS    	CHART         	APP VERSION	DESCRIPTION     
+<span style=color:#ae81ff>1</span>       	Wed Apr  <span style=color:#ae81ff>1</span> 23:41:38 2020	superseded	mariadb-7.3.13	10.3.22    	Install complete
+<span style=color:#ae81ff>2</span>       	Wed Apr  <span style=color:#ae81ff>1</span> 23:43:15 2020	superseded	mariadb-7.3.13	10.3.22    	Upgrade complete
+<span style=color:#ae81ff>3</span>       	Wed Apr  <span style=color:#ae81ff>1</span> 23:46:51 2020	deployed  	mariadb-7.3.13	10.3.22    	Rollback to <span style=color:#ae81ff>1</span>   
+</code></pre></div><ul><li>&ndash;timeout</li><li>&ndash;wait</li><li>&ndash;no-hooks</li><li>&ndash;recreate-pods</li></ul><h4 id=helm-uninstall-command>helm uninstall command</h4><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># helm uninstall abc</span>
+release <span style=color:#e6db74>&#34;abc&#34;</span> uninstalled
+
+<span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># helm uninstall abc --keep-history</span>
+release <span style=color:#e6db74>&#34;abc&#34;</span> uninstalled
+<span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># helm list</span>
+NAME	NAMESPACE	REVISION	UPDATED	STATUS	CHART	APP VERSION
+<span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># helm list --uninstalled</span>
+NAME	NAMESPACE	REVISION	UPDATED                                	STATUS     	CHART         	APP VERSION
+abc 	default  	<span style=color:#ae81ff>2</span>       	2020-04-01 23:50:04.259693547 +0900 KST	uninstalled	mariadb-7.3.13	10.3.22    
+</code></pre></div><h2 id=helm-chi-를-이용한-repo-명령어>helm chi 를 이용한 repo 명령어</h2><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>
+<span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># helm repo list</span>
+NAME  	URL                                              
+stable	https://kubernetes-charts.storage.googleapis.com/
+
+<span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># helm repo remove stable</span>
+<span style=color:#e6db74>&#34;stable&#34;</span> has been removed from your repositories
+
+<span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># helm repo list                     </span>
+NAME  	URL                                              
+stable	https://kubernetes-charts.storage.googleapis.com/
+gitlab	https://charts.gitlab.io/                        
+loki  	https://grafana.github.io/loki/charts  
+
+<span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># helm repo add stable https://kubernetes-charts.storage.googleapis.com/</span>
+<span style=color:#e6db74>&#34;stable&#34;</span> has been added to your repositories
+<span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># helm repo list</span>
+NAME  	URL                                              
+gitlab	https://charts.gitlab.io/                        
+loki  	https://grafana.github.io/loki/charts            
+stable	https://kubernetes-charts.storage.googleapis.com/
+</code></pre></div><h2 id=helm-chart-의-구조>helm chart 의 구조</h2><ul><li>create chart command 를 이용하여 임의의 test chart 를 생성 해본다.</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># helm create my-chart</span>
+Creating my-chart
+<span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># cd my-chart/</span>
+<span style=color:#f92672>[</span>root@di7-03 my-chart<span style=color:#f92672>]</span><span style=color:#75715e># tree .</span>
 .
-├── api
-│   └── v1
-├── bin
-├── config
-│   ├── certmanager
-│   ├── crd
-│   │   ├── bases
-│   │   └── patches
-│   ├── default
-│   ├── manager
-│   ├── prometheus
-│   ├── rbac
-│   ├── samples
-│   └── webhook
-├── controllers
-├── crd
-│   ├── config
-│   │   ├── certmanager
-│   │   ├── default
-│   │   ├── manager
-│   │   ├── prometheus
-│   │   ├── rbac
-│   │   └── webhook
-│   └── hack
-└── hack
-</code></pre></div><h2 id=packages>Packages</h2><h3 id=api->API ?</h3><p>kubebuilder create api 명령어를 이용하여 생성을 하면 리소스를 생성 하겠느냐? 라고 물어보는데 y 를 입력하면 api/{입력한 버전:=v1|v1beta|v1alpha}/{입력한 그룹명}_types.go 으로 API 리소스를 생성 해준다.</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>$ ls -al api/v1/
-total <span style=color:#ae81ff>12</span>
-drwx------. <span style=color:#ae81ff>2</span> root root   <span style=color:#ae81ff>88</span>  1월 <span style=color:#ae81ff>20</span> 10:14 .
-drwx------. <span style=color:#ae81ff>3</span> root root   <span style=color:#ae81ff>16</span>  1월 <span style=color:#ae81ff>20</span> 10:14 ..
--rw-------. <span style=color:#ae81ff>1</span> root root <span style=color:#ae81ff>1890</span>  1월 <span style=color:#ae81ff>20</span> 10:14 group_types.go
--rw-------. <span style=color:#ae81ff>1</span> root root <span style=color:#ae81ff>1218</span>  1월 <span style=color:#ae81ff>20</span> 10:14 groupversion_info.go
--rw-r--r--. <span style=color:#ae81ff>1</span> root root <span style=color:#ae81ff>3165</span>  1월 <span style=color:#ae81ff>20</span> 10:19 zz_generated.deepcopy.go
-</code></pre></div><ul><li>groupversion_info.go 파일은 API 리소스의 버전 정보의 구조체 이다. 수정하지는 않는다.</li><li>zz_generated.deepcopy.go 파일은 Controller 로 생성된 객체정보를 CRD에 반영해주는 파일이다. 수정 하지는 않는다.</li><li><code>*_types.go</code> 파일이 우리가 Controller 로 API 의 정보를 전달할 model 클래스 라고 보면 된다.<ul><li>API 에서 여러개의 API리소스를 구성하는 경우도 있지만 Kubebuilder 에서는 여러 Model 을 1개의 *_type.go 파일에 집어 넣지 말라고 이야기 하고 있다.</li><li>아래 예시 처럼 Spec 파일에 CRD 에 들어가는 json 정의를 작성 하면 config/sample/*.yaml 에 있는 예시파일에 맞추어서 CR 을 배포 하면 된다.</li></ul></li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#75715e># golang /api/v1/group_types.go</span>
-// GroupSpec defines the desired state of Group
-type GroupSpec struct <span style=color:#f92672>{</span>
-        // INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-        // Important: Run <span style=color:#e6db74>&#34;make&#34;</span> to regenerate code after modifying this file
+├── Chart.yaml
+├── charts
+├── templates
+│   ├── NOTES.txt
+│   ├── _helpers.tpl
+│   ├── deployment.yaml
+│   ├── ingress.yaml
+│   ├── service.yaml
+│   ├── serviceaccount.yaml
+│   └── tests
+│       └── test-connection.yaml
+└── values.yaml
 
-        // Foo is an example field of Group. Edit Group_types.go to remove/update
-        Foo string <span style=color:#e6db74>`</span>json:<span style=color:#e6db74>&#34;foo,omitempty&#34;</span><span style=color:#e6db74>`</span>
-</code></pre></div><h3 id=manager->Manager ?</h3><ul><li>Manager 패키지는 프로젝트의 root 에 있는 main.go 파일이다.<ul><li>metrics, log, leader 설정을 할 수 있으며</li><li>빌드 시에는 /bin 에 manager 로 생성되며 Dockerfile 로 이미지 생성까지 자동화 되어있다.</li></ul></li></ul><h3 id=controller->Controller ?</h3><ul><li>Controller 는 CR 이 생성될 K8s Native 객체들(e.g pod, deployment, configmap)을 조정이라는 메서드를 통하여 지속적으로 상태를 기대상태로 유지하도록 해주는 코어 패키지이다.</li><li>kubebuilder create api 명령에서 리소스를 생성하겠느냐는 물음에 y를 입력하면 아래 컨트롤러 파일이 생성 된다.<ul><li>생성한 API이름이 group 여서 group_cluster.go로 생성이 되었다.</li><li>아래 집중해야할 항목이 Reconcile 메서드와 SetupWithManager 함수이다.</li></ul></li><li>SetupWithManager 는 Manager 가 시작시에 Controller 을 등록 하는 함수이다.<ul><li>해당 함수 내에서 소유할 객체와 감시할 대상을 정의 할 수 있다.</li><li>여러개의 Operator 이 들어가서 1개의 K8s 클러스터에 CR을 병행 배포하려 한다면 Index 를 하여서 선별적으로 감시 할 수 있다.</li></ul></li><li>Recoile 함수는 조정 함수로 kuberntes 의 corev1, appv1 API 를 이용하여 K8s Native 객체를 생성 조정 한다.</li><li>local cache 를 설정할 수 있으나 테스트 안해보았다.</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#75715e>#/project_root</span>
-tree .
-├── controllers
-│   ├── group_controller.go
+<span style=color:#ae81ff>3</span> directories, <span style=color:#ae81ff>9</span> files
 
-$ cat controllers/group_controller.go
-/*
-lice info text 
-...
-*/
-package controllers
+<span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># helm package my-chart</span>
+Successfully packaged chart and saved it to: /root/yjkim/helm/my-chart-0.1.0.tgz
+</code></pre></div><h4 id=chart-배포-디버깅>chart 배포 디버깅</h4><ul><li>chart 를 설치 하기전에 <code>--debug</code> 와 <code>--dry-run</code> 구문을 사용할 수 있습니다.</li><li><code>--debug</code> 구문은 chart -> kube manifest 로 변환시에 spec yaml 을 출력 해줍니다. 이 구문을 실행하면 배포도 됩니다.</li><li><code>--dry-run</code> 구문은 manifest 의 yaml spec 을 출력 해줍니다. 배포 하지 않습니다.</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#75715e># debug example </span>
+<span style=color:#f92672>[</span>root@di7-03 my-chart<span style=color:#f92672>]</span><span style=color:#75715e># helm install test . -f values.yaml --debug</span>
 
-import <span style=color:#f92672>(</span>
-        <span style=color:#e6db74>&#34;context&#34;</span>
+<span style=color:#75715e># dryrun example </span>
+<span style=color:#f92672>[</span>root@di7-03 my-chart<span style=color:#f92672>]</span><span style=color:#75715e># helm install test . -f values.yaml --dry-run</span>
+</code></pre></div><h4 id=chart-name>chart name</h4><ul><li>chart 명은 소문자 및 숫자만 사용 가능합니다. 각 문자는 dash - 로 구분할 수 있습니다.</li><li>chart 명에 대문자 및 언더스코어 <code>_</code> 닷 <code>.</code> 는 사용할 수 없습니다.</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#75715e># 가능 </span>
+<span style=color:#ae81ff>drupal</span>
+<span style=color:#ae81ff>nginx-lego</span>
+<span style=color:#ae81ff>aws-cluster-autoscaler</span>
+</code></pre></div><h4 id=valuesyaml>values.yaml</h4><ul><li><p>values.yaml 파일은 정의된 chart 에 값을 변경하여 배포자가 원하는 형상으로 배포할 수 있도록 변경할 수 있도록 override 기능을 제공해줍니다.</p></li><li><p>values 의 data type 는 <a href=https://helm.sh/docs/chart_template_guide/data_types/>링크</a> 를 참조 바랍니다.</p></li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#75715e># example </span>
+<span style=color:#f92672>chicken</span>: <span style=color:#66d9ef>true</span>
+<span style=color:#f92672>chickenNoodleSoup</span>: <span style=color:#66d9ef>true</span>
 
-        <span style=color:#e6db74>&#34;github.com/go-logr/logr&#34;</span>
-        <span style=color:#e6db74>&#34;k8s.io/apimachinery/pkg/runtime&#34;</span>
-        ctrl <span style=color:#e6db74>&#34;sigs.k8s.io/controller-runtime&#34;</span>
-        <span style=color:#e6db74>&#34;sigs.k8s.io/controller-runtime/pkg/client&#34;</span>
+<span style=color:#75715e># 잘못된경우 </span>
+<span style=color:#f92672>Chicken</span>: <span style=color:#66d9ef>true</span>  <span style=color:#75715e># 내부 함수와 충돌 날 수 있음 </span>
+<span style=color:#f92672>chicken-noodle-soup</span>: <span style=color:#66d9ef>true</span> <span style=color:#75715e># 하이픈(-) 을 사용하지 않습니다. </span>
 
-        groupv1 <span style=color:#e6db74>&#34;yjkim.io/api/v1&#34;</span>
-<span style=color:#f92672>)</span>
+<span style=color:#75715e>## 표현예시 </span>
+<span style=color:#75715e># nasted </span>
+<span style=color:#f92672>server</span>:
+  <span style=color:#f92672>name</span>: <span style=color:#ae81ff>nginx</span>
+  <span style=color:#f92672>port</span>: <span style=color:#ae81ff>80</span>
 
-// GroupReconciler reconciles a Group object
-type GroupReconciler struct <span style=color:#f92672>{</span>
-        client.Client
-        Log    logr.Logger
-        Scheme *runtime.Scheme
-<span style=color:#f92672>}</span>
+<span style=color:#75715e># Flat </span>
+<span style=color:#f92672>serverName</span>: <span style=color:#ae81ff>nginx</span>
+<span style=color:#f92672>serverPort</span>: <span style=color:#ae81ff>80</span>
+</code></pre></div><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#75715e>## 표현예시 </span>
+<span style=color:#f92672>[</span>root@di7-03 my-chart<span style=color:#f92672>]</span><span style=color:#75715e># diff values.yaml nasted.yaml </span>
+35,37c35,39
+&lt; service:
+&lt;   type: ClusterIP
+&lt;   port: <span style=color:#ae81ff>80</span>
+---
+&gt; <span style=color:#75715e>#service:</span>
+&gt; <span style=color:#75715e>#  type: ClusterIP</span>
+&gt; <span style=color:#75715e>#  port: 80</span>
+&gt; serviceType: clusterIP
+&gt; servicePort: <span style=color:#ae81ff>8080</span>
 
-// +kubebuilder:rbac:groups<span style=color:#f92672>=</span>group.goldilocks.io,resources<span style=color:#f92672>=</span>groups,verbs<span style=color:#f92672>=</span>get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups<span style=color:#f92672>=</span>group.goldilocks.io,resources<span style=color:#f92672>=</span>groups/status,verbs<span style=color:#f92672>=</span>get;update;patch
+<span style=color:#f92672>[</span>root@di7-03 my-chart<span style=color:#f92672>]</span><span style=color:#75715e># helm install test . -f nasted.yaml --dry-run</span>
 
-func <span style=color:#f92672>(</span>r *GroupReconciler<span style=color:#f92672>)</span> Reconcile<span style=color:#f92672>(</span>req ctrl.Request<span style=color:#f92672>)</span> <span style=color:#f92672>(</span>ctrl.Result, error<span style=color:#f92672>)</span> <span style=color:#f92672>{</span>
-        _ <span style=color:#f92672>=</span> context.Background<span style=color:#f92672>()</span>
-        _ <span style=color:#f92672>=</span> r.Log.WithValues<span style=color:#f92672>(</span><span style=color:#e6db74>&#34;group&#34;</span>, req.NamespacedName<span style=color:#f92672>)</span>
+NOTES:
+1. Get the application URL by running these commands:
+  export POD_NAME<span style=color:#f92672>=</span><span style=color:#66d9ef>$(</span>kubectl get pods --namespace default -l <span style=color:#e6db74>&#34;app.kubernetes.io/name=my-chart,app.kubernetes.io/instance=test&#34;</span> -o jsonpath<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;{.items[0].metadata.name}&#34;</span><span style=color:#66d9ef>)</span>
+  echo <span style=color:#e6db74>&#34;Visit http://127.0.0.1:8080 to use your application&#34;</span>
+  kubectl --namespace default port-forward $POD_NAME 8080:80
+</code></pre></div><h4 id=templates>templates</h4><ul><li>helm chart 를 구성하고 kube manifest 를 정의 하기 위하여는 helm template 의 양식대로 chart 를 작성 하여야 합니다.</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#75715e># chart create </span>
+<span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># helm create mytest</span>
+Creating mytest
+<span style=color:#f92672>[</span>root@di7-03 helm<span style=color:#f92672>]</span><span style=color:#75715e># tree mytest</span>
+mytest
+├── Chart.yaml
+├── charts
+├── templates
+│   ├── NOTES.txt
+│   ├── _helpers.tpl
+│   ├── deployment.yaml
+│   ├── ingress.yaml
+│   ├── service.yaml
+│   ├── serviceaccount.yaml
+│   └── tests
+│       └── test-connection.yaml
+└── values.yaml
 
-        // your logic here
-
-        <span style=color:#66d9ef>return</span> ctrl.Result<span style=color:#f92672>{}</span>, nil
-<span style=color:#f92672>}</span>
-
-func <span style=color:#f92672>(</span>r *GroupReconciler<span style=color:#f92672>)</span> SetupWithManager<span style=color:#f92672>(</span>mgr ctrl.Manager<span style=color:#f92672>)</span> error <span style=color:#f92672>{</span>
-        <span style=color:#66d9ef>return</span> ctrl.NewControllerManagedBy<span style=color:#f92672>(</span>mgr<span style=color:#f92672>)</span>.
-                For<span style=color:#f92672>(</span>&amp;groupv1.Group<span style=color:#f92672>{})</span>.
-                Complete<span style=color:#f92672>(</span>r<span style=color:#f92672>)</span>
-<span style=color:#f92672>}</span>
-</code></pre></div><ul><li>kubebuilder 는 controller-gen 을 이용하여 객체를 생성 하는데 RBAC 객체를 생성하고자 한다면 marker 을 사용해야 한다.<ul><li>marker 는 아래와 같은 형식이며 작성하면 /config/rbac 에 RBAC manifest 를 생성해준다.</li><li>rbac 는 당연히 make install 시에 설치 된다.</li></ul></li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>// marker 예시 
-
-// +kubebuilder:rbac:groups<span style=color:#f92672>=</span>group.goldilocks.io,resources<span style=color:#f92672>=</span>groups,verbs<span style=color:#f92672>=</span>get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups<span style=color:#f92672>=</span>group.goldilocks.io,resources<span style=color:#f92672>=</span>groups/status,verbs<span style=color:#f92672>=</span>get;update;patch
-</code></pre></div><h2 id=simple-example>simple example</h2><ul><li>예시로 위에 있는 정보를 가지고 2개의 Pod를 생성후 조정하는 예제를 작성하고자 한다.<ul><li>예시에는 생성 객체를 index, local cache, manager ha 등의 예제는 없다.</li></ul></li><li>vscode 의 lang linter 혹은 문법 체크가 되는 환경에서 실행하는걸 추천한다.</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#75715e># project 생성 및 api 생성 </span>
-$ go mod init yjkim.io
-$ kubebuilder init --domain goldilocks.io --license apache2 --owner <span style=color:#e6db74>&#34;nTels.com&#34;</span>
-$ kubebuilder create api --group group --version v1 --kind Group
-Create Resource <span style=color:#f92672>[</span>y/n<span style=color:#f92672>]</span>
-y
-Create Controller <span style=color:#f92672>[</span>y/n<span style=color:#f92672>]</span>
-y
-</code></pre></div><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>// api/v1/group_type.go
-// GroupSpec defines the desired state of Group
-type GroupSpec struct <span style=color:#f92672>{</span>
-        Replicas int <span style=color:#e6db74>`</span>json:<span style=color:#e6db74>&#34;replicas,omitempty&#34;</span><span style=color:#e6db74>`</span> //FOO -&gt; replicas
-<span style=color:#f92672>}</span>
-</code></pre></div><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>//controllers/group_controller.go
-// +kubebuilder:rbac:groups<span style=color:#f92672>=</span>group.goldilocks.io,resources<span style=color:#f92672>=</span>groups,verbs<span style=color:#f92672>=</span>get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups<span style=color:#f92672>=</span>group.goldilocks.io,resources<span style=color:#f92672>=</span>groups/status,verbs<span style=color:#f92672>=</span>get;update;patch
-
-func <span style=color:#f92672>(</span>r *GroupReconciler<span style=color:#f92672>)</span> Reconcile<span style=color:#f92672>(</span>req ctrl.Request<span style=color:#f92672>)</span> <span style=color:#f92672>(</span>ctrl.Result, error<span style=color:#f92672>)</span> <span style=color:#f92672>{</span>
-	_ <span style=color:#f92672>=</span> context.Background<span style=color:#f92672>()</span>
-	log :<span style=color:#f92672>=</span> r.Log.WithValues<span style=color:#f92672>(</span><span style=color:#e6db74>&#34;req.Namespace&#34;</span>, req.Namespace, <span style=color:#e6db74>&#34;req.Name&#34;</span>, req.Name<span style=color:#f92672>)</span>
-
-	log.Info<span style=color:#f92672>(</span><span style=color:#e6db74>&#34;Reconciling simple CRD Clusters.&#34;</span><span style=color:#f92672>)</span>
-
-	group :<span style=color:#f92672>=</span> &amp;groupv1.Group<span style=color:#f92672>{}</span>
-
-	<span style=color:#66d9ef>if</span> err :<span style=color:#f92672>=</span> r.Get<span style=color:#f92672>(</span>context.TODO<span style=color:#f92672>()</span>, req.NamespacedName, group<span style=color:#f92672>)</span>; err !<span style=color:#f92672>=</span> nil <span style=color:#f92672>{</span>
-		<span style=color:#66d9ef>return</span> ctrl.Result<span style=color:#f92672>{}</span>, client.IgnoreNotFound<span style=color:#f92672>(</span>err<span style=color:#f92672>)</span>
-	<span style=color:#f92672>}</span>
-
-	var replicas <span style=color:#f92672>=</span> group.Spec.Replicas
-
-	<span style=color:#66d9ef>for</span> i :<span style=color:#f92672>=</span> 1; i &lt;<span style=color:#f92672>=</span> replicas; i++ <span style=color:#f92672>{</span>
-		member :<span style=color:#f92672>=</span> &amp;corev1.Pod<span style=color:#f92672>{</span>
-			ObjectMeta: metav1.ObjectMeta<span style=color:#f92672>{</span>
-				Name:      <span style=color:#e6db74>&#34;g&#34;</span> + strconv.Itoa<span style=color:#f92672>(</span>i<span style=color:#f92672>)</span>,
-				Namespace: group.Namespace,
-				Labels: map<span style=color:#f92672>[</span>string<span style=color:#f92672>]</span>string<span style=color:#f92672>{</span>
-					<span style=color:#e6db74>&#34;app&#34;</span>: <span style=color:#e6db74>&#34;g&#34;</span> + strconv.Itoa<span style=color:#f92672>(</span>i<span style=color:#f92672>)</span>,
-				<span style=color:#f92672>}</span>,
-			<span style=color:#f92672>}</span>,
-			Spec: corev1.PodSpec<span style=color:#f92672>{</span>
-				Containers: <span style=color:#f92672>[]</span>corev1.Container<span style=color:#f92672>{</span>
-					<span style=color:#f92672>{</span>
-						Name:  <span style=color:#e6db74>&#34;g&#34;</span> + strconv.Itoa<span style=color:#f92672>(</span>i<span style=color:#f92672>)</span>,
-						Image: <span style=color:#e6db74>&#34;nginx&#34;</span>,
-					<span style=color:#f92672>}</span>,
-				<span style=color:#f92672>}</span>,
-				RestartPolicy: corev1.RestartPolicyOnFailure,
-			<span style=color:#f92672>}</span>,
-		<span style=color:#f92672>}</span>
-		err :<span style=color:#f92672>=</span> r.Client.Get<span style=color:#f92672>(</span>context.TODO<span style=color:#f92672>()</span>, types.NamespacedName<span style=color:#f92672>{</span>Name: group.Name, Namespace: group.Namespace<span style=color:#f92672>}</span>, &amp;corev1.Pod<span style=color:#f92672>{})</span>
-
-		<span style=color:#66d9ef>if</span> err !<span style=color:#f92672>=</span> nil <span style=color:#f92672>&amp;&amp;</span> errors.IsNotFound<span style=color:#f92672>(</span>err<span style=color:#f92672>)</span> <span style=color:#f92672>{</span>
-			err <span style=color:#f92672>=</span> r.Client.Create<span style=color:#f92672>(</span>context.TODO<span style=color:#f92672>()</span>, member<span style=color:#f92672>)</span>
-
-			<span style=color:#66d9ef>if</span> err !<span style=color:#f92672>=</span> nil <span style=color:#f92672>{</span>
-				log.Error<span style=color:#f92672>(</span>err, <span style=color:#e6db74>&#34;Failed to create new Member.&#34;</span>, <span style=color:#e6db74>&#34;Namespace&#34;</span>, group.Namespace, <span style=color:#e6db74>&#34;Name&#34;</span>, group<span style=color:#f92672>)</span>
-			<span style=color:#f92672>}</span>
-		<span style=color:#f92672>}</span>
-
-	<span style=color:#f92672>}</span>
-
-	<span style=color:#66d9ef>return</span> ctrl.Result<span style=color:#f92672>{}</span>, nil
-<span style=color:#f92672>}</span>
-
-func <span style=color:#f92672>(</span>r *GroupReconciler<span style=color:#f92672>)</span> getEnqueObjects<span style=color:#f92672>(</span>obj handler.MapObject<span style=color:#f92672>)</span> <span style=color:#f92672>[]</span>ctrl.Request <span style=color:#f92672>{</span>
-	listOptions :<span style=color:#f92672>=</span> <span style=color:#f92672>[]</span>client.ListOption<span style=color:#f92672>{</span>
-		client.InNamespace<span style=color:#f92672>(</span>obj.Meta.GetNamespace<span style=color:#f92672>())</span>,
-	<span style=color:#f92672>}</span>
-
-	var list groupv1.GroupList
-	<span style=color:#66d9ef>if</span> err :<span style=color:#f92672>=</span> r.Client.List<span style=color:#f92672>(</span>context.Background<span style=color:#f92672>()</span>, &amp;list, listOptions...<span style=color:#f92672>)</span>; err !<span style=color:#f92672>=</span> nil <span style=color:#f92672>{</span>
-		log.Error<span style=color:#f92672>(</span><span style=color:#e6db74>&#34;getEnqueObjects: &#34;</span>, err<span style=color:#f92672>)</span>
-		<span style=color:#66d9ef>return</span> nil
-	<span style=color:#f92672>}</span>
-
-	res :<span style=color:#f92672>=</span> make<span style=color:#f92672>([]</span>ctrl.Request, len<span style=color:#f92672>(</span>list.Items<span style=color:#f92672>))</span>
-	<span style=color:#66d9ef>for</span> i, watchlist :<span style=color:#f92672>=</span> range list.Items <span style=color:#f92672>{</span>
-		res<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span>.Name <span style=color:#f92672>=</span> watchlist.Name
-		res<span style=color:#f92672>[</span>i<span style=color:#f92672>]</span>.Namespace <span style=color:#f92672>=</span> watchlist.Namespace
-	<span style=color:#f92672>}</span>
-	<span style=color:#66d9ef>return</span> res
-<span style=color:#f92672>}</span>
-
-func <span style=color:#f92672>(</span>r *GroupReconciler<span style=color:#f92672>)</span> SetupWithManager<span style=color:#f92672>(</span>mgr ctrl.Manager<span style=color:#f92672>)</span> error <span style=color:#f92672>{</span>
-	<span style=color:#66d9ef>return</span> ctrl.NewControllerManagedBy<span style=color:#f92672>(</span>mgr<span style=color:#f92672>)</span>.
-		For<span style=color:#f92672>(</span>&amp;groupv1.Group<span style=color:#f92672>{})</span>.
-		Watches<span style=color:#f92672>(</span>
-			&amp;source.Kind<span style=color:#f92672>{</span>Type: &amp;corev1.Pod<span style=color:#f92672>{}}</span>,
-			&amp;handler.EnqueueRequestsFromMapFunc<span style=color:#f92672>{</span>
-				ToRequests: handler.ToRequestsFunc<span style=color:#f92672>(</span>r.getEnqueObjects<span style=color:#f92672>)})</span>.
-		Complete<span style=color:#f92672>(</span>r<span style=color:#f92672>)</span>
-<span style=color:#f92672>}</span>
-
-</code></pre></div><ul><li><p>Recoile 함수는 CR 을 생성 후에 하위 객체들을 조정 하는 함수 이며</p><ul><li>// +kubebuilder:rbac 문구는 Kubebuilder 에서 marker 로 RBAC 객체를 생성 해주는 라인이다.</li><li>if err := r.Get(context.TODO(), req.NamespacedName, group); Client 를 이용하여 Cluster 에 CR 이 배포 되었는지 확인하는 소스이다.</li><li>member := &corev1.Pod{ k8s corev1 API 를 이용하여 Pod Manifest 를 정의 하는 소스 이다.</li><li>err := r.Client.Get(context.TODO(), types.NamespacedName{ Pod Manifest 를 Cluster 에 조회 하는 소스 이다.</li><li>err = r.Client.Create(context.TODO(), member) Pod 를 클러스터에 생성 하는 소스 이다.</li></ul></li><li><p>SetupWithManager 함수는 현재 이 &groupv1.Group{} Controller 을 Manager 에 등록 하는 소스 이다.</p><ul><li>Recoile 함수가 발동 될 대상을 정의 하는 함수 이다.</li><li>ToRequests: handler.ToRequestsFunc(r.getEnqueObjects)}). Cluster 에 있는 Group CRD 를 Client를 이용하여 조회 하여 Recoile 발생 하도록 요청 하는 소스이다.</li></ul></li><li><p>getEnqueObjects 함수는 Watches 함수 내에서 사용하는 함수 이다.</p><ul><li>Client 를 이용하여 CR 를 조회 하여 등록 하는 함수 이다.</li></ul></li><li><p>생성한 Operator 을 Cluster 에 배포, local 에서 실행 한다.</p></li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#75715e># make generate : bin 에 파일이 생성됨 </span>
-<span style=color:#75715e># make install : CRD 를 Kube cluster 에 설치 함</span>
-$ make generate <span style=color:#f92672>&amp;&amp;</span> make install 
-
-<span style=color:#75715e># local 에서 manager 파일을 실행 </span>
-$ make run 
-
-</code></pre></div><ul><li>sample manifest 를 수정 한다.<ul><li>이미 config/sample 안에 한개의 Manifest 가 생성이 되어 있다.</li><li>*_types.go 파일의 형식에 맞게 수정 해준다.</li></ul></li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>apiVersion: group.goldilocks.io/v1
-kind: Group
+<span style=color:#ae81ff>3</span> directories, <span style=color:#ae81ff>9</span> files
+</code></pre></div><ul><li><code>/templates</code> 폴더는 helm chart 의 양식 파일로 kube manifest 가 정의 되어있습니다.<ul><li>배포를 요청하면 helm 의 template engin에서 kube manifest 를 렌더링 한 후에 kube 서버로 전송하게 될 양식들 입니다.</li></ul></li><li><code>NOTES.txt</code> chart 가 deploy 된 후에 사용자에게 출력 될 문자열 입니다.</li><li><code>deployment.yaml</code> kubernetes 의 deployment manifest 입니다.</li><li><code>_helpers.tpl</code> chart 의 template 간의 재 사용될 수 있는 양식 객체 입니다.</li><li>Chart 는 <a href=https://godoc.org/text/template>go template engine</a> 와 <a href=https://masterminds.github.io/sprig/>Sqrig 라이브러리</a>의 내장 기능을 제공 합니다.</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#75715e># template 생성 예제 </span>
+<span style=color:#f92672>[</span>root@di7-03 mytest<span style=color:#f92672>]</span><span style=color:#75715e># vi templates/configmap.yaml</span>
+apiVersion: v1
+kind: ConfigMap
 metadata:
-  name: group-sample
+  name: mychart-configmap
+data:
+  myvalue: <span style=color:#e6db74>&#34;Hello World&#34;</span>
+
+<span style=color:#f92672>[</span>root@di7-03 mytest<span style=color:#f92672>]</span><span style=color:#75715e># helm install test .</span>
+NAME: test
+LAST DEPLOYED: Thu Apr  <span style=color:#ae81ff>2</span> 01:38:51 <span style=color:#ae81ff>2020</span>
+NAMESPACE: default
+STATUS: deployed
+REVISION: <span style=color:#ae81ff>1</span>
+NOTES:
+1. Get the application URL by running these commands:
+  export POD_NAME<span style=color:#f92672>=</span><span style=color:#66d9ef>$(</span>kubectl get pods --namespace default -l <span style=color:#e6db74>&#34;app.kubernetes.io/name=mytest,app.kubernetes.io/instance=test&#34;</span> -o jsonpath<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;{.items[0].metadata.name}&#34;</span><span style=color:#66d9ef>)</span>
+  echo <span style=color:#e6db74>&#34;Visit http://127.0.0.1:8080 to use your application&#34;</span>
+  kubectl --namespace default port-forward $POD_NAME 8080:80
+
+<span style=color:#f92672>[</span>root@di7-03 mytest<span style=color:#f92672>]</span><span style=color:#75715e># k get cm -o yaml</span>
+apiVersion: v1
+items:
+- apiVersion: v1
+  data:
+    myvalue: Hello World
+  kind: ConfigMap
+  metadata:
+    creationTimestamp: <span style=color:#e6db74>&#34;2020-04-01T16:38:51Z&#34;</span>
+    name: mychart-configmap
+    namespace: default
+    resourceVersion: <span style=color:#e6db74>&#34;8687183&#34;</span>
+    selfLink: /api/v1/namespaces/default/configmaps/mychart-configmap
+    uid: cb509e8b-05a5-47c3-9716-bbb6816855f8
+kind: List
+metadata:
+  resourceVersion: <span style=color:#e6db74>&#34;&#34;</span>
+  selfLink: <span style=color:#e6db74>&#34;&#34;</span>
+
+<span style=color:#f92672>[</span>root@di7-03 mytest<span style=color:#f92672>]</span><span style=color:#75715e># helm get manifest test</span>
+---
+<span style=color:#75715e># Source: mytest/templates/configmap.yaml</span>
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mychart-configmap
+data:
+  myvalue: <span style=color:#e6db74>&#34;Hello World&#34;</span>
+</code></pre></div><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#75715e># template 적용 예제 </span>
+<span style=color:#f92672>[</span>root@di7-03 mytest<span style=color:#f92672>]</span><span style=color:#75715e># cat templates/configmap.yaml </span>
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: <span style=color:#f92672>{{</span> .Release.Name <span style=color:#f92672>}}</span>-configmap
+data:
+  myvalue: <span style=color:#e6db74>&#34;Hello World&#34;</span>
+
+<span style=color:#f92672>[</span>root@di7-03 mytest<span style=color:#f92672>]</span><span style=color:#75715e># helm install test .</span>
+NAME: test
+LAST DEPLOYED: Thu Apr  <span style=color:#ae81ff>2</span> 01:42:20 <span style=color:#ae81ff>2020</span>
+NAMESPACE: default
+STATUS: deployed
+REVISION: <span style=color:#ae81ff>1</span>
+NOTES:
+1. Get the application URL by running these commands:
+  export POD_NAME<span style=color:#f92672>=</span><span style=color:#66d9ef>$(</span>kubectl get pods --namespace default -l <span style=color:#e6db74>&#34;app.kubernetes.io/name=mytest,app.kubernetes.io/instance=test&#34;</span> -o jsonpath<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;{.items[0].metadata.name}&#34;</span><span style=color:#66d9ef>)</span>
+  echo <span style=color:#e6db74>&#34;Visit http://127.0.0.1:8080 to use your application&#34;</span>
+  kubectl --namespace default port-forward $POD_NAME 8080:80
+<span style=color:#f92672>[</span>root@di7-03 mytest<span style=color:#f92672>]</span><span style=color:#75715e># helm get manifest </span>
+Error: <span style=color:#e6db74>&#34;helm get manifest&#34;</span> requires <span style=color:#ae81ff>1</span> argument
+
+Usage:  helm get manifest RELEASE_NAME <span style=color:#f92672>[</span>flags<span style=color:#f92672>]</span>
+<span style=color:#f92672>[</span>root@di7-03 mytest<span style=color:#f92672>]</span><span style=color:#75715e># helm get manifest  test</span>
+---
+<span style=color:#75715e># Source: mytest/templates/configmap.yaml</span>
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-configmap
+data:
+  myvalue: <span style=color:#e6db74>&#34;Hello World&#34;</span>
+
+<span style=color:#f92672>[</span>root@di7-03 mytest<span style=color:#f92672>]</span><span style=color:#75715e># k get cm -o yaml</span>
+apiVersion: v1
+items:
+- apiVersion: v1
+  data:
+    myvalue: Hello World
+  kind: ConfigMap
+  metadata:
+    creationTimestamp: <span style=color:#e6db74>&#34;2020-04-01T16:42:20Z&#34;</span>
+    name: test-configmap
+    namespace: default
+    resourceVersion: <span style=color:#e6db74>&#34;8687966&#34;</span>
+    selfLink: /api/v1/namespaces/default/configmaps/test-configmap
+    uid: 06b82abe-c350-431b-83aa-2586cd35aadf
+kind: List
+metadata:
+  resourceVersion: <span style=color:#e6db74>&#34;&#34;</span>
+  selfLink: <span style=color:#e6db74>&#34;&#34;</span>
+</code></pre></div><ul><li>values 파일을 통한 template function 적용은 <a href=https://helm.sh/docs/chart_template_guide/values_files/>공홈 참조</a></li></ul><h4 id=chart-hook>chart hook</h4><ul><li>helm chart 는 hook 를 기본 내장 하고 있으며 그 중에 한가지 테스트를 해본다.</li><li>chart template 에 annotation 을 등록 하면 hook 를 이용할 수 있다.</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh><span style=color:#f92672>[</span>root@di7-03 my-chart<span style=color:#f92672>]</span><span style=color:#75715e># cat templates/pre-install.yaml </span>
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pre-install-hook-pod
+  annotations:
+    <span style=color:#e6db74>&#34;helm.sh/hook&#34;</span>: <span style=color:#e6db74>&#34;pre-install&#34;</span>
 spec:
-  <span style=color:#75715e># Add fields here</span>
-  <span style=color:#75715e># foo: bar -&gt; replicas:2</span>
-  replicas: <span style=color:#ae81ff>2</span>
+  containers:
+  - name: hook1-container
+    image: busybox
+    imagePullPolicy: IfNotPresent
+    command: <span style=color:#f92672>[</span><span style=color:#e6db74>&#39;sh&#39;</span>, <span style=color:#e6db74>&#39;-c&#39;</span>, <span style=color:#e6db74>&#39;echo The pre-install hook Pod is running &amp;&amp; sleep 10&#39;</span><span style=color:#f92672>]</span>
+  restartPolicy: Never
+  terminationGracePeriodSeconds: <span style=color:#ae81ff>0</span>
 
-</code></pre></div><ul><li>수정한 CR 을 K8s Cluster 에 배포 한다.</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>$ kubectl create -f config/sample 
-group.group.goldilocks.io/group-sample created
+<span style=color:#f92672>[</span>root@di7-03 my-chart<span style=color:#f92672>]</span><span style=color:#75715e># cat templates/post-install.yaml </span>
+apiVersion: v1
+kind: Pod
+metadata:
+  name: post-install-hook-pod
+  annotations:
+    <span style=color:#e6db74>&#34;helm.sh/hook&#34;</span>: <span style=color:#e6db74>&#34;post-install&#34;</span>
+spec:
+  containers:
+  - name: hook1-container
+    image: busybox
+    imagePullPolicy: IfNotPresent
+    command: <span style=color:#f92672>[</span><span style=color:#e6db74>&#39;sh&#39;</span>, <span style=color:#e6db74>&#39;-c&#39;</span>, <span style=color:#e6db74>&#39;echo post-install hook Pod is running &amp;&amp; sleep 10&#39;</span><span style=color:#f92672>]</span>
+  restartPolicy: Never
+  terminationGracePeriodSeconds: <span style=color:#ae81ff>0</span>
 
-$ kubectl get po 
-NAME   READY   STATUS    RESTARTS   AGE
-g1     1/1     Running   <span style=color:#ae81ff>0</span>          40s
-g2     1/1     Running   <span style=color:#ae81ff>0</span>          40s
+<span style=color:#f92672>[</span>root@di7-03 my-chart<span style=color:#f92672>]</span><span style=color:#75715e># helm install my-test .</span>
+Pod pre-install-hook-pod pending
+Pod pre-install-hook-pod pending
+Pod pre-install-hook-pod pending
+Pod pre-install-hook-pod running
+Pod pre-install-hook-pod succeeded
+Pod post-install-hook-pod pending
+Pod post-install-hook-pod pending
+Pod post-install-hook-pod pending
+Pod post-install-hook-pod running
+Pod post-install-hook-pod succeeded
+NAME: my-test
+LAST DEPLOYED: Thu Apr  <span style=color:#ae81ff>2</span> 01:25:48 <span style=color:#ae81ff>2020</span>
+NAMESPACE: default
+STATUS: deployed
+REVISION: <span style=color:#ae81ff>1</span>
+NOTES:
+1. Get the application URL by running these commands:
+  export POD_NAME<span style=color:#f92672>=</span><span style=color:#66d9ef>$(</span>kubectl get pods --namespace default -l <span style=color:#e6db74>&#34;app.kubernetes.io/name=my-chart,app.kubernetes.io/instance=my-test&#34;</span> -o jsonpath<span style=color:#f92672>=</span><span style=color:#e6db74>&#34;{.items[0].metadata.name}&#34;</span><span style=color:#66d9ef>)</span>
+  echo <span style=color:#e6db74>&#34;Visit http://127.0.0.1:8080 to use your application&#34;</span>
+  kubectl --namespace default port-forward $POD_NAME 8080:80
 
-$ kubectl get groups
-NAME           AGE
-group-sample   45s
-</code></pre></div><ul><li>생성한 Pod를 수동으로 삭제 해도 Recoile 로직이 잘 발동 하여서 다시 생성을 해준다.</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>$ kubectl get po 
-NAME   READY   STATUS    RESTARTS   AGE
-g1     1/1     Running   <span style=color:#ae81ff>0</span>          115s
-g2     1/1     Running   <span style=color:#ae81ff>0</span>          115s
+<span style=color:#f92672>[</span>root@di7-03 my-chart<span style=color:#f92672>]</span><span style=color:#75715e># helm list</span>
+NAME   	NAMESPACE	REVISION	UPDATED                                	STATUS  	CHART         	APP VERSION
+my-test	default  	<span style=color:#ae81ff>1</span>       	2020-04-02 01:25:48.299571978 +0900 KST	deployed	my-chart-0.1.0	1.16.0    
 
-$ kubectl delete po g2 
-pod <span style=color:#e6db74>&#34;g2&#34;</span> deleted
+<span style=color:#f92672>[</span>root@di7-03 my-chart<span style=color:#f92672>]</span><span style=color:#75715e># kubectl get po</span>
+NAME                    READY   STATUS      RESTARTS   AGE
+post-install-hook-pod   0/1     Completed   <span style=color:#ae81ff>0</span>          71s
+pre-install-hook-pod    0/1     Completed   <span style=color:#ae81ff>0</span>          83s
 
-$ kubectl get po 
-NAME   READY   STATUS              RESTARTS   AGE
-g1     1/1     Running             <span style=color:#ae81ff>0</span>          2m13s
-g2     0/1     ContainerCreating   <span style=color:#ae81ff>0</span>          5s
-
-</code></pre></div></div><div class=btn-improve-page><a href=https://github.com/oct28-yjkim/oct28-yjkim.github.io/edit//content/posts/kubernetes/helm/index.md title="Improve this page" target=_blank rel=noopener><i class="fas fa-code-branch"></i>Improve this page</a></div><hr><div class="row next-prev-navigator"><div class="col-md-6 previous-article"><a href=/posts/ceph/ceph-connect/ title="Ceph connect" class="btn btn-outline-info"><div><i class="fas fa-chevron-circle-left"></i>Prev</div><div class=next-prev-text>Ceph connect</div></a></div><div class="col-md-6 next-article"><a href=/posts/kubernetes/kubebuilder/ title="Kubebuilder 을 이용한 K8s CustomResource 개발" class="btn btn-outline-info"><div>Next <i class="fas fa-chevron-circle-right"></i></div><div class=next-prev-text>Kubebuilder 을 이용한 K8s CustomResource 개발</div></a></div></div><hr></div></div></div><a id=scroll-to-top class=btn><i class="fas fa-chevron-circle-up"></i></a></section><section class=toc-section id=toc-section><div class=toc-holder><h5 class="text-center pl-3">Table of Contents</h5><hr><div class=toc><nav id=TableOfContents><ul><li><a href=#개요>개요</a></li><li><a href=#순서>순서</a></li><li><a href=#설치>설치</a></li><li><a href=#create-simple-project>create simple project</a></li><li><a href=#나만의-customresource-생성하기>나만의 CustomResource 생성하기</a></li><li><a href=#packages>Packages</a><ul><li><a href=#api->API ?</a></li><li><a href=#manager->Manager ?</a></li><li><a href=#controller->Controller ?</a></li></ul></li><li><a href=#simple-example>simple example</a></li></ul></nav></div></div></section></div><footer class="container-fluid text-center align-content-center footer pb-2"><div class="container pt-5"><div class="row text-left"><div class="col-md-4 col-sm-12"><h5>Navigation</h5><ul><li class=nav-item><a class=smooth-scroll href=/#about>About</a></li><li class=nav-item><a class=smooth-scroll href=/#skills>Skills</a></li><li class=nav-item><a class=smooth-scroll href=/#experiences>Experiences</a></li><li class=nav-item><a class=smooth-scroll href=/#recent-posts>Recent Posts</a></li></ul></div><div class="col-md-4 col-sm-12"><h5>Contact me:</h5><ul><li><span>Email:</span> <span>oct28-yjkim@google.com</span></li></ul></div></div></div><hr><div class=container><div class="row text-left"><div class=col-md-4><a id=theme href=https://github.com/hossainemruz/toha target=_blank rel=noopener><img src=/images/theme-logo_hu8376fd15465fef26ffe66b6bcf0ca686_13669_32x0_resize_box_2.png alt="Toha Theme Logo">
+</code></pre></div><ul><li><a href=https://helm.sh/docs/topics/charts_hooks/>참고자료</a></li></ul></div><div class=btn-improve-page><a href=https://github.com/oct28-yjkim/oct28-yjkim.github.io/edit//content/posts/kubernetes/helm/index.md title="Improve this page" target=_blank rel=noopener><i class="fas fa-code-branch"></i>Improve this page</a></div><hr><div class="row next-prev-navigator"><div class="col-md-6 previous-article"><a href=/posts/ceph/ceph-connect/ title="Ceph connect" class="btn btn-outline-info"><div><i class="fas fa-chevron-circle-left"></i>Prev</div><div class=next-prev-text>Ceph connect</div></a></div><div class="col-md-6 next-article"><a href=/posts/kubernetes/kubebuilder/ title="Kubebuilder 을 이용한 K8s CustomResource 개발" class="btn btn-outline-info"><div>Next <i class="fas fa-chevron-circle-right"></i></div><div class=next-prev-text>Kubebuilder 을 이용한 K8s CustomResource 개발</div></a></div></div><hr></div></div></div><a id=scroll-to-top class=btn><i class="fas fa-chevron-circle-up"></i></a></section><section class=toc-section id=toc-section><div class=toc-holder><h5 class="text-center pl-3">Table of Contents</h5><hr><div class=toc><nav id=TableOfContents><ul><li><a href=#helm-project-소개>Helm Project 소개</a></li><li><a href=#helm-cli-설치>Helm cli 설치</a></li><li><a href=#helm-cli-를-이용한-chart-사용법>helm cli 를 이용한 chart 사용법</a><ul><li><ul><li><a href=#helm-search-command>helm search command</a></li><li><a href=#helm-install-command>helm install command</a></li><li><a href=#helm-status-command>helm status command</a></li><li><a href=#helm-upgrade-command>helm upgrade command</a></li><li><a href=#helm-rollback-command>helm rollback command</a></li><li><a href=#helm-uninstall-command>helm uninstall command</a></li></ul></li></ul></li><li><a href=#helm-chi-를-이용한-repo-명령어>helm chi 를 이용한 repo 명령어</a></li><li><a href=#helm-chart-의-구조>helm chart 의 구조</a><ul><li><ul><li><a href=#chart-배포-디버깅>chart 배포 디버깅</a></li><li><a href=#chart-name>chart name</a></li><li><a href=#valuesyaml>values.yaml</a></li><li><a href=#templates>templates</a></li><li><a href=#chart-hook>chart hook</a></li></ul></li></ul></li></ul></nav></div></div></section></div><footer class="container-fluid text-center align-content-center footer pb-2"><div class="container pt-5"><div class="row text-left"><div class="col-md-4 col-sm-12"><h5>Navigation</h5><ul><li class=nav-item><a class=smooth-scroll href=/#about>About</a></li><li class=nav-item><a class=smooth-scroll href=/#skills>Skills</a></li><li class=nav-item><a class=smooth-scroll href=/#experiences>Experiences</a></li><li class=nav-item><a class=smooth-scroll href=/#recent-posts>Recent Posts</a></li></ul></div><div class="col-md-4 col-sm-12"><h5>Contact me:</h5><ul><li><span>Email:</span> <span>oct28-yjkim@google.com</span></li></ul></div></div></div><hr><div class=container><div class="row text-left"><div class=col-md-4><a id=theme href=https://github.com/hossainemruz/toha target=_blank rel=noopener><img src=/images/theme-logo_hu8376fd15465fef26ffe66b6bcf0ca686_13669_32x0_resize_box_2.png alt="Toha Theme Logo">
 Toha</a></div><div class="col-md-4 text-center">© 2020 Copyright.</div><div class="col-md-4 text-right"><a id=hugo href=https://gohugo.io/ target=_blank rel=noopener>Powered by
 <img src=/images/hugo-logo.svg alt="Hugo Logo" height=18></a></div></div></div></footer><script type=text/javascript src=/js/jquery-3.4.1.min.js></script><script type=text/javascript src=/js/popper.min.js></script><script type=text/javascript src=/js/bootstrap.min.js></script><script type=text/javascript src=/js/navbar.js></script><script type=text/javascript src=/js/plyr.js></script><script type=text/javascript src=/js/main.js></script><script src=https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/highlight.min.js></script><script src=/js/single.js></script><script>hljs.initHighlightingOnLoad();</script><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css integrity=sha384-zB1R0rpPzHqg7Kpt0Aljp8JPLqbXI3bhnPWROx27a9N0Ll6ZP/+DiW/UqRcLbRjq crossorigin=anonymous><script defer src=https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js integrity=sha384-y23I5Q6l+B6vatafAwxRu/0oK/79VlbSz7Q9aiSZUvyWYIYsd+qj+o24G5ZU2zJz crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js integrity=sha384-kWPLUVMOks5AQFrykwIup5lo0m3iMkkHrD0uJ4H5cjeGihAutqP0yW0J6dpFiVkI crossorigin=anonymous onload=renderMathInElement(document.body);></script></body></html>
