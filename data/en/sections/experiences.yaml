@@ -11,32 +11,42 @@ section:
 # Your experiences
 experiences:
 - company:
-    name: Example Co.
-    url: "https://www.example.com"
-    location: Dhaka Branch
+    name: nTels Co.
+    url: "https://www.ntels.com/"
+    location: Seoul
     # company overview
-    overview: Example Co. is a widely recognized company for cloud-native development. It builds tools for Kubernetes.
+    overview: ntels Co. We help enable feture services to be introduced in the 5G Era
   positions:
   - designation: Senior Software Engineer
-    start: Nov 2019
+    start: Jan 2019
     # don't provide end date if you are currently working there. It will be replaced by "Present"
     # end: Dec 2020
     # give some points about what was your responsibilities at the company.
     responsibilities:
-    - Design and develop XYZ tool for ABC task
-    - Design, develop and manage disaster recovery tool [Xtool](https://www.example.com) that backup Kubernetes volumes, databases, and cluster's resource definition.
-    - Lead backend team.
+    - Design and develop Kubernetes Applications
+    - Design, develop and manage disaster recovery tool that backup Kubernetes volumes, databases, and cluster's resource definition.
 
 - company:
-    name: PreExample Co.
-    url: "https://www.preexample.com"
-    location: Nowhere
-    overview: PreExample Co. is a gateway company to enter into Example co. So, nothing special here.
+    name: SPTek Co.
+    url: "https://www.sptek.com"
+    location: Seoul
+    overview: SPTek is Cloud Self Service with Telco Era.
   positions:
   - designation: Software Engineer
-    start: March 2016
-    end: May 2017
+    start: Jan 2018
+    end: Jan 2019
     responsibilities:
-    - Write lots of example codes.
-    - Read lots of examples.
-    - See lots of example videos.
+    - Devlop Cloud Monitoring Stack.
+    - We provide Private Cloud Solutions
+
+- company:
+    name: GTNB Co.
+    url: "https://www.sptek.com"
+    location: Korea 
+    overview: GTNB Co. Devlop of military security encryption equipment program and civil business
+  positions:
+  - designation: Software Engineer
+    start: Oct 2016
+    end: Jan 2018
+    responsibilities:
+    - Devlop TMS Solutions .
