@@ -1,0 +1,331 @@
+<!doctype html><html><head><title>On-Premise 서버에 MariaDB 설치하기</title><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta http-equiv=x-ua-compatible content="ie=edge"><link rel=stylesheet href=/css/bootstrap.min.css><link rel=stylesheet href=/css/layouts/main.css><link rel=stylesheet href=/css/navigators/navbar.css><link rel=stylesheet href=/css/plyr.css><link rel=stylesheet href=/css/flag-icon.min.css><link href="https://fonts.googleapis.com/css2?family=Muli:wght@300;400;500;600" rel=stylesheet><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.min.css><link rel=icon type=image/png href=/images/site/favicon_hub02d7508a1c89b2b7812eab204efeb9a_4223_42x0_resize_box_2.png><meta property="og:title" content="On-Premise 서버에 MariaDB 설치하기"><meta property="og:description" content="MariaDB 설치"><meta property="og:type" content="article"><meta property="og:url" content="https://oct28-yjkim.github.io/posts/database/mariadb_install/"><meta property="article:published_time" content="2021-07-06T08:06:25+09:00"><meta property="article:modified_time" content="2021-07-06T08:06:25+09:00"><meta name=description content="MariaDB 설치"><link rel=stylesheet href=https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/styles/atom-one-dark.min.css><link rel=stylesheet href=/css/layouts/single.css><link rel=stylesheet href=/css/navigators/sidebar.css><link rel=stylesheet href=/css/style.css></head><body data-spy=scroll data-target=#TableOfContents data-offset=80><div class="container-fluid bg-dimmed wrapper"><nav class="navbar navbar-expand-xl top-navbar final-navbar shadow"><div class=container><button class="navbar-toggler navbar-light" id=sidebar-toggler type=button onclick=toggleSidebar()>
+<span class=navbar-toggler-icon></span></button>
+<a class=navbar-brand href=/><img src=/images/site/main-logo_hu9ad2f25a877e6fef77c7a3dbef5094ad_6881_42x0_resize_box_2.png alt=Logo>
+yjkim's Blog</a>
+<button class="navbar-toggler navbar-light" id=toc-toggler type=button onclick=toggleTOC()>
+<span class=navbar-toggler-icon></span></button><div class="collapse navbar-collapse lang-selector" id=top-nav-items><ul class="navbar-nav ml-auto"></ul></div></div><img src=/images/site/main-logo_hu9ad2f25a877e6fef77c7a3dbef5094ad_6881_42x0_resize_box_2.png class=d-none id=main-logo alt=Logo>
+<img src=/images/site/inverted-logo_hub02d7508a1c89b2b7812eab204efeb9a_4223_42x0_resize_box_2.png class=d-none id=inverted-logo alt="Inverted Logo"></nav><section class=sidebar-section id=sidebar-section><div class=sidebar-holder><div class=sidebar id=sidebar><form class=mx-auto method=get action=/search><input type=text name=keyword placeholder=Search data-search id=search-box></form><div class=sidebar-tree><ul class=tree id=tree><li id=list-heading><a href=/posts data-filter=all>Posts</a></li><div class=subtree><li><a href=/posts/introduction/ title=Introduction>Introduction</a></li><li><i class="fas fa-plus-circle"></i><a href=/posts/category/>Category</a><ul><li><i class="fas fa-plus-circle"></i><a href=/posts/category/sub-category/>Sub-Category</a><ul><li><a href=/posts/category/sub-category/rich-content/ title="Rich Content">Rich Content</a></li><li><a href=/posts/category/sub-category/markdown-sample/ title="Markdown Sample">Markdown Sample</a></li><li><a href=/posts/category/sub-category/shortcodes/ title="Shortcodes Sample">Shortcodes Sample</a></li></ul></li></ul></li><li><i class="fas fa-plus-circle"></i><a href=/posts/ceph/>Ceph</a><ul><li><a href=/posts/ceph/ceph-ansible/ title=ceph-ansible>ceph-ansible</a></li><li><a href=/posts/ceph/ceph-commands/ title=ceph-commands>ceph-commands</a></li><li><a href=/posts/ceph/ceph-connect/ title=ceph-connect>ceph-connect</a></li></ul></li><li><i class="fas fa-minus-circle"></i><a class=active href=/posts/database/>Database</a><ul class=active><li><a class=active href=/posts/database/mariadb_install/ title=MariaDB_install>MariaDB_install</a></li></ul></li><li><i class="fas fa-plus-circle"></i><a href=/posts/kubernetes/>Kubernetes</a><ul><li><a href=/posts/kubernetes/helm/ title="helm chart">helm chart</a></li><li><a href=/posts/kubernetes/kubebuilder/ title=kubebuilder>kubebuilder</a></li><li><a href=/posts/kubernetes/kubespray/ title=kubespray>kubespray</a></li></ul></li></div></ul></div></div></div></section><section class=content-section id=content-section><div class=content><div class="container p-0 read-area"><div class="hero-area col-sm-12" id=hero-area style=background-image:url(https://oct28-yjkim.github.io/posts/database/mariadb_install/hero.svg)></div><div class=page-content><div class="author-profile ml-auto align-self-lg-center"><img class=rounded-circle src=/images/author/john_hu7f9991f5b5d471ecdfc6cff3db1a9fe6_6397_120x120_fit_box_2.png alt="Author Image"><h5 class=author-name>yjkim</h5><p>July 6, 2021</p></div><div class=title><h1>On-Premise 서버에 MariaDB 설치하기</h1></div><div class=post-content id=post-content><h3 id=개요>개요</h3><ul><li>2EA 의 서버에 Replication 을 구성하는 예제를 작성할 것이다.</li><li>서버는<ul><li>mysql1 : 192.168.12.131, 8 core, 16GB RAM, Disk 500Gib</li><li>mysql2 : 192.168.12.132, 8 core, 16GB RAM, Disk 500Gib</li></ul></li></ul><h3 id=mariadb-설치>MariaDB 설치</h3><ul><li>설치는 Compile 설치가 가장 베스트이며 성능차이가 있다고 하지만.. 현 기준으로는 RPM 설치를 하겠다.</li><li>순서는 아래 순차적으로 진행하겠다.<ul><li>RPM repo 구성</li><li>MariaDB 설치</li><li>Data Partition 구성</li><li>Replication 설정</li></ul></li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>cat <span style=color:#e6db74>&lt;&lt; EOF &gt;  /etc/yum.repos.d/MariaDB.repo
+</span><span style=color:#e6db74>[mariadb]
+</span><span style=color:#e6db74>name = MariaDB
+</span><span style=color:#e6db74>baseurl = http://yum.mariadb.org/10.3/centos7-amd64
+</span><span style=color:#e6db74>gpgkey=https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
+</span><span style=color:#e6db74>gpgcheck=1
+</span><span style=color:#e6db74>EOF</span>
+
+sudo yum clean all
+
+sudo rpm --import https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
+
+sudo yum install -y MariaDB-server galera MariaDB-client MariaDB-shared MariaDB-backup MariaDB-common
+
+Installing:
+ MariaDB-backup                      x86_64             10.3.30-1.el7.centos              mariadb             6.1 M
+ MariaDB-client                      x86_64             10.3.30-1.el7.centos              mariadb              <span style=color:#ae81ff>11</span> M
+ MariaDB-common                      x86_64             10.3.30-1.el7.centos              mariadb              <span style=color:#ae81ff>81</span> k
+ MariaDB-compat                      x86_64             10.3.30-1.el7.centos              mariadb             2.2 M
+     replacing  mariadb-libs.x86_64 1:5.5.65-1.el7
+ MariaDB-server                      x86_64             10.3.30-1.el7.centos              mariadb              <span style=color:#ae81ff>24</span> M
+ MariaDB-shared                      x86_64             10.3.30-1.el7.centos              mariadb             <span style=color:#ae81ff>112</span> k
+ galera                              x86_64             25.3.33-1.el7.centos              mariadb             8.1 M
+Installing <span style=color:#66d9ef>for</span> dependencies:
+ boost-program-options               x86_64             1.53.0-28.el7                     base                <span style=color:#ae81ff>156</span> k
+ lsof                                x86_64             4.87-6.el7                        base                <span style=color:#ae81ff>331</span> k
+ perl-Compress-Raw-Bzip2             x86_64             2.061-3.el7                       base                 <span style=color:#ae81ff>32</span> k
+ perl-Compress-Raw-Zlib              x86_64             1:2.061-4.el7                     base                 <span style=color:#ae81ff>57</span> k
+ perl-DBI                            x86_64             1.627-4.el7                       base                <span style=color:#ae81ff>802</span> k
+ perl-IO-Compress                    noarch             2.061-2.el7                       base                <span style=color:#ae81ff>260</span> k
+ perl-Net-Daemon                     noarch             0.48-5.el7                        base                 <span style=color:#ae81ff>51</span> k
+ perl-PlRPC                          noarch             0.2020-14.el7                     base                 <span style=color:#ae81ff>36</span> k
+
+</code></pre></div><ul><li>설치 요구 받은 서버의 버전정보가 10.3 이며 각 서버별로의 기능 특성을 숙지 하는게 중요 하다.</li><li>설치 하고자 하는 버전의 정보를 명시 하려면 RPM Repo 에 baseurl 에 버전정보를 따라가도록 설정하면 된다.</li></ul><h3 id=data-partition-준비>Data Partition 준비</h3><ul><li>DB 서버를 구성 할때는 OS 영역과 Data 영역을 분리 하는것을 권장 한다.</li><li>Disk 의 Bandwidth 가 별도로 영향을 받도록 정의 하는것이 중요하며</li><li>OS 에 받는 부하와 DB 가 받는 부하를 분리 하여서 DB 가 장애나도 OS 는 유지되어 복구 가능한 상태로 유지하는것이 중요 하다.</li><li>그리고 OS 에서 사용하는 Disk 는 그렇게 비싸지 않아도 되지만 거의 Mirror 수준인 RAID 1 수준으로 유지하지만</li><li>Data Disk 는 장비에 따라 RAID 5, 6, 혹은 10 등등의 구조를 가저가서 물리장비인 Disk Controller 에서 복구 하기도 한다.</li><li>당연히 DB 가 장애가 나서 데이터를 저장 하지 못하여도 Active, Active 혹은 Active Standby 형태로 구성하여 Failover 을 고려 하는것도 중요하다.</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>fdisk /dev/vdb
+n
+p
+enter * <span style=color:#ae81ff>3</span> 
+w
+mkfs.xfs /dev/vdb1
+mkdir /data
+<span style=color:#75715e># 영구히 마운트 하려면 /etc/fstab 에 기록해준다. </span>
+mount /dev/vdb1 /data
+mkdir -p /data/mysql
+mkdir -p /data/mysql/mysql-data
+mkdir -p /data/mysql/tmpdir
+mkdir -p /data/mysql/log
+mkdir -p /data/mysql/log/binary
+mkdir -p /data/mysql/log/error
+mkdir -p /data/mysql/log/relay
+mkdir -p /data/mysql/log/general
+
+chown -R mysql:mysql /data/mysql/
+</code></pre></div><h3 id=data-path-변경>Data Path 변경</h3><ul><li>MariaDB 를 설치하면 기본 Dir 에 데이터가 저장이 되며 기본 경로는 OS 파티션에 위치한다</li><li>MariaDB 의 Data Path 를 변경 해준다.</li></ul><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>
+rm -rf /var/lib/mysql 
+
+cat <span style=color:#e6db74>&lt;&lt; EOF &gt;  /etc/my.cnf
+</span><span style=color:#e6db74>[client]
+</span><span style=color:#e6db74>port                            = 3306
+</span><span style=color:#e6db74>socket                          = /data/mysql/mysql.sock
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>[mysqld]
+</span><span style=color:#e6db74>port                            = 3306
+</span><span style=color:#e6db74>socket                          = /data/mysql/mysql.sock
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>datadir                         = /data/mysql/mysql-data
+</span><span style=color:#e6db74>tmpdir                          = /data/mysql/tmpdir
+</span><span style=color:#e6db74>innodb_data_home_dir           = /data/mysql/mysql-data
+</span><span style=color:#e6db74>innodb_log_group_home_dir       = /data/mysql/log
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>binlog_format                   = mixed
+</span><span style=color:#e6db74>expire_logs_days                = 7
+</span><span style=color:#e6db74>long_query_time                 = 10
+</span><span style=color:#e6db74>max_binlog_size                 = 1G
+</span><span style=color:#e6db74>sync_binlog                     = 1
+</span><span style=color:#e6db74>slow_query_log                  = 1
+</span><span style=color:#e6db74>log-bin                         = /data/mysql/log/binary/mysql-bin
+</span><span style=color:#e6db74>log-error                       = /data/mysql/log/error/mysql.err
+</span><span style=color:#e6db74>relay-log                       = /data/mysql/log/relay/relay-log
+</span><span style=color:#e6db74>slow_query_log_file             = /data/mysql/log/mysql-slow-query.log
+</span><span style=color:#e6db74>general_log_file                = /data/mysql/log/general/mysql_general.log
+</span><span style=color:#e6db74>log-warnings                    = 2
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>character_set-client-handshake  = FALSE
+</span><span style=color:#e6db74>character-set-server            = utf8mb4
+</span><span style=color:#e6db74>collation_server                = utf8mb4_general_ci
+</span><span style=color:#e6db74>init_connect                    = set collation_connection=utf8mb4_general_ci
+</span><span style=color:#e6db74>init_connect                    = set names utf8mb4
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>back_log                        = 1024
+</span><span style=color:#e6db74>binlog_cache_size               = 1M
+</span><span style=color:#e6db74>ft_min_word_len                 = 4
+</span><span style=color:#e6db74>interactive_timeout             = 600
+</span><span style=color:#e6db74>join_buffer_size                = 2M
+</span><span style=color:#e6db74>max_allowed_packet              = 1G
+</span><span style=color:#e6db74>max_connections                 = 8196
+</span><span style=color:#e6db74>max_heap_table_size             = 4096M
+</span><span style=color:#e6db74>max_length_for_sort_data        = 1024
+</span><span style=color:#e6db74>open_files_limit                = 8192
+</span><span style=color:#e6db74>performance_schema
+</span><span style=color:#e6db74>read_buffer_size                = 1M
+</span><span style=color:#e6db74>read_rnd_buffer_size            = 8M
+</span><span style=color:#e6db74>skip_external_locking
+</span><span style=color:#e6db74>skip-name-resolve               = 1
+</span><span style=color:#e6db74>sort_buffer_size                = 1M
+</span><span style=color:#e6db74>key_buffer_size                 = 8388608
+</span><span style=color:#e6db74>table_open_cache                = 10240
+</span><span style=color:#e6db74>tmp_table_size                  = 4096M
+</span><span style=color:#e6db74>transaction_isolation           = READ-COMMITTED
+</span><span style=color:#e6db74>slave_skip_errors               = all
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>query_cache_type                = 0
+</span><span style=color:#e6db74>query_cache_size                = 0
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>innodb_autoinc_lock_mode        = 1
+</span><span style=color:#e6db74>innodb_buffer_pool_size         = 1G # 적절한 수준으로 조정 한다. 
+</span><span style=color:#e6db74>innodb_fast_shutdown            = 1
+</span><span style=color:#e6db74>innodb_file_per_table           = 1
+</span><span style=color:#e6db74>innodb_flush_log_at_trx_commit  = 2
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>innodb_lock_wait_timeout        = 72000
+</span><span style=color:#e6db74>innodb_log_buffer_size          = 64M
+</span><span style=color:#e6db74>innodb_log_file_size            = 512M
+</span><span style=color:#e6db74>innodb_log_files_in_group       = 8
+</span><span style=color:#e6db74>innodb_open_files               = 8192
+</span><span style=color:#e6db74>innodb_read_io_threads          = 8
+</span><span style=color:#e6db74>innodb_thread_concurrency       = 0
+</span><span style=color:#e6db74>innodb_thread_sleep_delay       = 0
+</span><span style=color:#e6db74>innodb_write_io_threads         = 8
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>thread_handling=pool-of-threads
+</span><span style=color:#e6db74>thread_pool_idle_timeout        = 120
+</span><span style=color:#e6db74>thread_pool_stall_limit         = 60
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>log_bin_trust_function_creators = 1
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>server-id                       = 1 # Replication 하고자 하는 서버의 식벌 정보를 준다. 
+</span><span style=color:#e6db74>
+</span><span style=color:#e6db74>[mysqldump]
+</span><span style=color:#e6db74>quick
+</span><span style=color:#e6db74>max_allowed_packet              = 512M
+</span><span style=color:#e6db74>EOF</span>
+
+<span style=color:#75715e># 초기 Database 파일을 생성 해준다. </span>
+/usr/bin/mysql_install_db --user<span style=color:#f92672>=</span>mysql
+
+<span style=color:#75715e># Selinux 가 Enable 되었을 시에 Data 폴더를 적용 해준다. </span>
+semanage fcontext -a -t mysqld_db_t <span style=color:#e6db74>&#34;/data/mysql(/.*)?&#34;</span>
+restorecon -R -v /data/mysql 
+
+<span style=color:#75715e># MariaDB 를 시작 한다. </span>
+Systmectl start maraidb <span style=color:#f92672>&amp;&amp;</span> systemctl enable mariadb
+
+</code></pre></div><h3 id=mariadb-replication-설정>MariaDB Replication 설정</h3><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>
+<span style=color:#75715e># 각 서버 별로 계정 설정을 해준다. </span>
+CREATE USER <span style=color:#e6db74>&#39;repl&#39;</span>@<span style=color:#e6db74>&#39;%&#39;</span> IDENTIFIED BY <span style=color:#e6db74>&#39;yjkim1234!&#39;</span>;
+GRANT REPLICATION SLAVE ON *.* to <span style=color:#e6db74>&#39;repl&#39;</span>;
+
+<span style=color:#75715e># master 서버에서 master 의 bin log 파일 정보를 확인한다. </span>
+MariaDB <span style=color:#f92672>[(</span>none<span style=color:#f92672>)]</span>&gt; show master status;
++------------------+----------+--------------+------------------+
+| File             | Position | Binlog_Do_DB | Binlog_Ignore_DB |
++------------------+----------+--------------+------------------+
+| mysql-bin.000012 |      <span style=color:#ae81ff>342</span> |              |                  |
++------------------+----------+--------------+------------------+
+
+<span style=color:#75715e># Slave 서버에서 Master 로 호출 한다. </span>
+CHANGE MASTER TO MASTER_HOST<span style=color:#f92672>=</span><span style=color:#e6db74>&#39;192.168.12.131&#39;</span>, MASTER_USER<span style=color:#f92672>=</span><span style=color:#e6db74>&#39;repl&#39;</span>, MASTER_PASSWORD<span style=color:#f92672>=</span><span style=color:#e6db74>&#39;yjkim1234!&#39;</span>, MASTER_LOG_FILE<span style=color:#f92672>=</span><span style=color:#e6db74>&#39;mysql-bin.000012&#39;</span>, MASTER_LOG_POS<span style=color:#f92672>=</span>342;
+
+<span style=color:#75715e># SLAVE 에서 조회 </span>
+MariaDB <span style=color:#f92672>[(</span>none<span style=color:#f92672>)]</span>&gt; show slave status<span style=color:#ae81ff>\G</span>
+*************************** 1. row ***************************
+                Slave_IO_State:
+                   Master_Host: 192.168.12.131
+                   Master_User: repl
+                   Master_Port: <span style=color:#ae81ff>3306</span>
+                 Connect_Retry: <span style=color:#ae81ff>60</span>
+               Master_Log_File: mysql-bin.000012
+           Read_Master_Log_Pos: <span style=color:#ae81ff>342</span>
+                Relay_Log_File: relay-log.000001
+                 Relay_Log_Pos: <span style=color:#ae81ff>4</span>
+         Relay_Master_Log_File: mysql-bin.000012
+              Slave_IO_Running: No                 <span style=color:#75715e># 아직 동작중이 아니다. </span>
+             Slave_SQL_Running: No
+               Replicate_Do_DB:
+           Replicate_Ignore_DB:
+            Replicate_Do_Table:
+        Replicate_Ignore_Table:
+       Replicate_Wild_Do_Table:
+   Replicate_Wild_Ignore_Table:
+                    Last_Errno: <span style=color:#ae81ff>0</span>
+                    Last_Error:
+                  Skip_Counter: <span style=color:#ae81ff>0</span>
+           Exec_Master_Log_Pos: <span style=color:#ae81ff>342</span>
+               Relay_Log_Space: <span style=color:#ae81ff>256</span>
+               Until_Condition: None
+                Until_Log_File:
+                 Until_Log_Pos: <span style=color:#ae81ff>0</span>
+            Master_SSL_Allowed: No
+            Master_SSL_CA_File:
+            Master_SSL_CA_Path:
+               Master_SSL_Cert:
+             Master_SSL_Cipher:
+                Master_SSL_Key:
+         Seconds_Behind_Master: NULL
+ Master_SSL_Verify_Server_Cert: No
+                 Last_IO_Errno: <span style=color:#ae81ff>0</span>
+                 Last_IO_Error:
+                Last_SQL_Errno: <span style=color:#ae81ff>0</span>
+                Last_SQL_Error:
+   Replicate_Ignore_Server_Ids:
+              Master_Server_Id: <span style=color:#ae81ff>0</span>
+                Master_SSL_Crl:
+            Master_SSL_Crlpath:
+                    Using_Gtid: No
+                   Gtid_IO_Pos:
+       Replicate_Do_Domain_Ids:
+   Replicate_Ignore_Domain_Ids:
+                 Parallel_Mode: conservative
+                     SQL_Delay: <span style=color:#ae81ff>0</span>
+           SQL_Remaining_Delay: NULL
+       Slave_SQL_Running_State:
+              Slave_DDL_Groups: <span style=color:#ae81ff>0</span>
+Slave_Non_Transactional_Groups: <span style=color:#ae81ff>0</span>
+    Slave_Transactional_Groups: <span style=color:#ae81ff>0</span>
+<span style=color:#ae81ff>1</span> row in set <span style=color:#f92672>(</span>0.000 sec<span style=color:#f92672>)</span>
+
+<span style=color:#75715e># Slave 를 시작한다. </span>
+START SLAVE;
+
+<span style=color:#75715e># 동작 상태를 확인 </span>
+MariaDB <span style=color:#f92672>[(</span>none<span style=color:#f92672>)]</span>&gt; show slave status<span style=color:#ae81ff>\G</span>
+*************************** 1. row ***************************
+                Slave_IO_State: Waiting <span style=color:#66d9ef>for</span> master to send event
+                   Master_Host: 192.168.12.131
+                   Master_User: repl
+                   Master_Port: <span style=color:#ae81ff>3306</span>
+                 Connect_Retry: <span style=color:#ae81ff>60</span>
+               Master_Log_File: mysql-bin.000012
+           Read_Master_Log_Pos: <span style=color:#ae81ff>342</span>
+                Relay_Log_File: relay-log.000002
+                 Relay_Log_Pos: <span style=color:#ae81ff>555</span>
+         Relay_Master_Log_File: mysql-bin.000012
+              Slave_IO_Running: Yes
+             Slave_SQL_Running: Yes
+               Replicate_Do_DB:
+           Replicate_Ignore_DB:
+            Replicate_Do_Table:
+        Replicate_Ignore_Table:
+       Replicate_Wild_Do_Table:
+   Replicate_Wild_Ignore_Table:
+                    Last_Errno: <span style=color:#ae81ff>0</span>
+                    Last_Error:
+                  Skip_Counter: <span style=color:#ae81ff>0</span>
+           Exec_Master_Log_Pos: <span style=color:#ae81ff>342</span>
+               Relay_Log_Space: <span style=color:#ae81ff>858</span>
+               Until_Condition: None
+                Until_Log_File:
+                 Until_Log_Pos: <span style=color:#ae81ff>0</span>
+            Master_SSL_Allowed: No
+            Master_SSL_CA_File:
+            Master_SSL_CA_Path:
+               Master_SSL_Cert:
+             Master_SSL_Cipher:
+                Master_SSL_Key:
+         Seconds_Behind_Master: <span style=color:#ae81ff>0</span>
+ Master_SSL_Verify_Server_Cert: No
+                 Last_IO_Errno: <span style=color:#ae81ff>0</span>
+                 Last_IO_Error:
+                Last_SQL_Errno: <span style=color:#ae81ff>0</span>
+                Last_SQL_Error:
+   Replicate_Ignore_Server_Ids:
+              Master_Server_Id: <span style=color:#ae81ff>1</span>
+                Master_SSL_Crl:
+            Master_SSL_Crlpath:
+                    Using_Gtid: No
+                   Gtid_IO_Pos:
+       Replicate_Do_Domain_Ids:
+   Replicate_Ignore_Domain_Ids:
+                 Parallel_Mode: conservative
+                     SQL_Delay: <span style=color:#ae81ff>0</span>
+           SQL_Remaining_Delay: NULL
+       Slave_SQL_Running_State: Slave has read all relay log; waiting <span style=color:#66d9ef>for</span> the slave I/O thread to update it
+              Slave_DDL_Groups: <span style=color:#ae81ff>0</span>
+Slave_Non_Transactional_Groups: <span style=color:#ae81ff>0</span>
+    Slave_Transactional_Groups: <span style=color:#ae81ff>0</span>
+
+</code></pre></div><h3 id=replication-테스트>Replication 테스트</h3><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>
+<span style=color:#75715e># master 에서 입력 한다. </span>
+MariaDB <span style=color:#f92672>[(</span>none<span style=color:#f92672>)]</span>&gt;  CREATE DATABASE REPLTEST;
+Query OK, <span style=color:#ae81ff>1</span> row affected <span style=color:#f92672>(</span>0.003 sec<span style=color:#f92672>)</span>
+
+MariaDB <span style=color:#f92672>[(</span>none<span style=color:#f92672>)]</span>&gt; CREATE TABLE REPLTEST.REP<span style=color:#f92672>(</span>ID INT<span style=color:#f92672>)</span>;
+Query OK, <span style=color:#ae81ff>0</span> rows affected <span style=color:#f92672>(</span>0.008 sec<span style=color:#f92672>)</span>
+
+MariaDB <span style=color:#f92672>[(</span>none<span style=color:#f92672>)]</span>&gt; INSERT INTO REPLTEST.REP VALUES<span style=color:#f92672>(</span>1<span style=color:#f92672>)</span>,<span style=color:#f92672>(</span>2<span style=color:#f92672>)</span>,<span style=color:#f92672>(</span>3<span style=color:#f92672>)</span>;
+Query OK, <span style=color:#ae81ff>3</span> rows affected <span style=color:#f92672>(</span>0.003 sec<span style=color:#f92672>)</span>
+Records: <span style=color:#ae81ff>3</span>  Duplicates: <span style=color:#ae81ff>0</span>  Warnings: <span style=color:#ae81ff>0</span>
+
+<span style=color:#75715e># slave 에서 조회 한다. </span>
+MariaDB <span style=color:#f92672>[(</span>none<span style=color:#f92672>)]</span>&gt; show databases;
++--------------------+
+| Database           |
++--------------------+
+| REPLTEST           |
+| information_schema |
+| mysql              |
+| performance_schema |
+| test               |
++--------------------+
+<span style=color:#ae81ff>5</span> rows in set <span style=color:#f92672>(</span>0.013 sec<span style=color:#f92672>)</span>
+
+MariaDB <span style=color:#f92672>[(</span>none<span style=color:#f92672>)]</span>&gt; <span style=color:#66d9ef>select</span> * from REPLTEST.REP;
++------+
+| ID   |
++------+
+|    <span style=color:#ae81ff>1</span> |
+|    <span style=color:#ae81ff>2</span> |
+|    <span style=color:#ae81ff>3</span> |
++------+
+<span style=color:#ae81ff>3</span> rows in set <span style=color:#f92672>(</span>0.000 sec<span style=color:#f92672>)</span>
+
+
+</code></pre></div></div><div class=btn-improve-page><a href=https://github.com/oct28-yjkim/oct28-yjkim.github.io/edit//content/posts/database/mariadb_install/index.md title="Improve this page" target=_blank rel=noopener><i class="fas fa-code-branch"></i>Improve this page</a></div><hr><div class="row next-prev-navigator"><div class="col-md-6 previous-article"><a href=/posts/ceph/ceph-connect/ title="Ceph connect" class="btn btn-outline-info"><div><i class="fas fa-chevron-circle-left"></i>Prev</div><div class=next-prev-text>Ceph connect</div></a></div><div class="col-md-6 next-article"><a href=/posts/kubernetes/helm/ title="helm chart 를 이용한 package" class="btn btn-outline-info"><div>Next <i class="fas fa-chevron-circle-right"></i></div><div class=next-prev-text>helm chart 를 이용한 package</div></a></div></div><hr></div></div></div><a id=scroll-to-top class=btn><i class="fas fa-chevron-circle-up"></i></a></section><section class=toc-section id=toc-section><div class=toc-holder><h5 class="text-center pl-3">Table of Contents</h5><hr><div class=toc><nav id=TableOfContents><ul><li><ul><li><a href=#개요>개요</a></li><li><a href=#mariadb-설치>MariaDB 설치</a></li><li><a href=#data-partition-준비>Data Partition 준비</a></li><li><a href=#data-path-변경>Data Path 변경</a></li><li><a href=#mariadb-replication-설정>MariaDB Replication 설정</a></li><li><a href=#replication-테스트>Replication 테스트</a></li></ul></li></ul></nav></div></div></section></div><footer class="container-fluid text-center align-content-center footer pb-2"><div class="container pt-5"><div class="row text-left"><div class="col-md-4 col-sm-12"><h5>Navigation</h5><ul><li class=nav-item><a class=smooth-scroll href=/#about>About</a></li><li class=nav-item><a class=smooth-scroll href=/#skills>Skills</a></li><li class=nav-item><a class=smooth-scroll href=/#experiences>Experiences</a></li><li class=nav-item><a class=smooth-scroll href=/#recent-posts>Recent Posts</a></li></ul></div><div class="col-md-4 col-sm-12"><h5>Contact me:</h5><ul><li><span>Email:</span> <span>oct28-yjkim@google.com</span></li></ul></div></div></div><hr><div class=container><div class="row text-left"><div class=col-md-4><a id=theme href=https://github.com/hossainemruz/toha target=_blank rel=noopener><img src=/images/theme-logo_hu8376fd15465fef26ffe66b6bcf0ca686_13669_32x0_resize_box_2.png alt="Toha Theme Logo">
+Toha</a></div><div class="col-md-4 text-center">© 2020 Copyright.</div><div class="col-md-4 text-right"><a id=hugo href=https://gohugo.io/ target=_blank rel=noopener>Powered by
+<img src=/images/hugo-logo.svg alt="Hugo Logo" height=18></a></div></div></div></footer><script type=text/javascript src=/js/jquery-3.4.1.min.js></script><script type=text/javascript src=/js/popper.min.js></script><script type=text/javascript src=/js/bootstrap.min.js></script><script type=text/javascript src=/js/navbar.js></script><script type=text/javascript src=/js/plyr.js></script><script type=text/javascript src=/js/main.js></script><script src=https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/highlight.min.js></script><script src=/js/single.js></script><script>hljs.initHighlightingOnLoad();</script><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css integrity=sha384-zB1R0rpPzHqg7Kpt0Aljp8JPLqbXI3bhnPWROx27a9N0Ll6ZP/+DiW/UqRcLbRjq crossorigin=anonymous><script defer src=https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js integrity=sha384-y23I5Q6l+B6vatafAwxRu/0oK/79VlbSz7Q9aiSZUvyWYIYsd+qj+o24G5ZU2zJz crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js integrity=sha384-kWPLUVMOks5AQFrykwIup5lo0m3iMkkHrD0uJ4H5cjeGihAutqP0yW0J6dpFiVkI crossorigin=anonymous onload=renderMathInElement(document.body);></script></body></html>
